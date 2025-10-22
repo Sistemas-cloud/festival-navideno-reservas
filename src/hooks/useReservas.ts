@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AsientosResponse, Reserva, Asiento } from '@/types';
 
 export const useReservas = (alumnoRef: number) => {
@@ -9,7 +9,7 @@ export const useReservas = (alumnoRef: number) => {
   const [pagos, setPagos] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchAsientosDisponibles = async () => {
+  const fetchAsientosDisponibles = useCallback(async () => {
     try {
       const response = await fetch('/api/reservas/asientos-disponibles', {
         method: 'POST',
@@ -24,9 +24,9 @@ export const useReservas = (alumnoRef: number) => {
     } catch (error) {
       console.error('Error al obtener asientos disponibles:', error);
     }
-  };
+  }, [alumnoRef]);
 
-  const fetchReservas = async () => {
+  const fetchReservas = useCallback(async () => {
     try {
       const response = await fetch('/api/reservas/reservas', {
         method: 'POST',
@@ -41,9 +41,9 @@ export const useReservas = (alumnoRef: number) => {
     } catch (error) {
       console.error('Error al obtener reservas:', error);
     }
-  };
+  }, [alumnoRef]);
 
-  const fetchPagos = async () => {
+  const fetchPagos = useCallback(async () => {
     try {
       const response = await fetch('/api/reservas/pagos', {
         method: 'POST',
@@ -58,7 +58,7 @@ export const useReservas = (alumnoRef: number) => {
     } catch (error) {
       console.error('Error al obtener pagos:', error);
     }
-  };
+  }, [alumnoRef]);
 
   const crearReserva = async (
     asientos: Asiento[],

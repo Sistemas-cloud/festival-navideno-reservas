@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { useReservas } from '@/hooks/useReservas';
 import { HermanosData, ComprobanteData, AsientoComprobante } from '@/types';
@@ -393,11 +394,13 @@ export const Dashboard: React.FC = () => {
           </div>
           <div className="relative overflow-hidden rounded-xl">
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent z-10"></div>
-                  <img 
+                  <Image 
                     src="/escenario.png" 
-              alt="Escenario del Festival Navideño" 
-              className="w-full h-64 object-cover transform hover:scale-105 transition-transform duration-500"
-            />
+                    alt="Escenario del Festival Navideño" 
+                    width={800}
+                    height={256}
+                    className="w-full h-64 object-cover transform hover:scale-105 transition-transform duration-500"
+                  />
             <div className="absolute bottom-4 left-4 z-20">
               <h4 className="text-white font-bold text-lg">TECHNO XMAS ESCENARIO</h4>
               <p className="text-white/90 text-sm">Una experiencia visual única</p>

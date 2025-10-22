@@ -1,4 +1,4 @@
-import { getSupabaseClient, Alumno, Reserva } from '../supabase';
+import { getSupabaseClient, Reserva } from '../supabase';
 
 export class ReservaModel {
   

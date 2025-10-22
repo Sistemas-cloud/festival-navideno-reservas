@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useReservas } from '@/hooks/useReservas';
 import { Asiento, SectionConfig } from '@/types';
 
@@ -299,9 +300,11 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
             <div className="text-center mb-8">
               <div className="relative overflow-hidden rounded-2xl shadow-2xl mb-6">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
-                <img 
+                <Image 
                   src="/escenario.png" 
                   alt="Escenario del Festival Navideño" 
+                  width={800}
+                  height={192}
                   className="w-full h-48 object-cover transform hover:scale-105 transition-transform duration-500"
                 />
                 <div className="absolute bottom-4 left-4 z-20">

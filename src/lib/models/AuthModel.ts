@@ -1,4 +1,11 @@
-import { getSupabaseClient, Alumno, AlumnoDetalles, AlumnoFamiliar } from '../supabase';
+import { getSupabaseClient } from '../supabase';
+
+interface HermanoData {
+  nombre: string;
+  control: number;
+  nivel: number;
+  grado: number;
+}
 
 export class AuthModel {
   
@@ -20,7 +27,7 @@ export class AuthModel {
       }
 
       // Verificar contraseña
-      const { data: detalle, error: detalleError } = await supabase
+      const { error: detalleError } = await supabase
         .from('alumno_detalles')
         .select('*')
         .eq('alumno_id', alumno.alumno_id)
@@ -75,7 +82,7 @@ export class AuthModel {
       // Mostrar información de hermanos
       if (hermanosData.length > 0) {
         console.log('\n👨‍👩‍👧‍👦 ===== INFORMACIÓN DE HERMANOS =====');
-        hermanosData.forEach((hermano: any, index: number) => {
+        hermanosData.forEach((hermano: HermanoData, index: number) => {
           let hermanoFuncion = '';
           let hermanoNivel = hermano.nivel;
           const hermanoGrado = hermano.grado;
@@ -141,7 +148,7 @@ export class AuthModel {
     }
   }
 
-  private async getHermanos(alumnoId: number): Promise<unknown[]> {
+  private async getHermanos(alumnoId: number): Promise<HermanoData[]> {
     try {
       const supabase = getSupabaseClient();
       
@@ -158,8 +165,7 @@ export class AuthModel {
         return [];
       }
 
-      const hermanosData: unknown[] = [];
-      const processedIds = new Set<number>();
+      const hermanosData: HermanoData[] = [];
 
       // Recopilar todos los criterios de búsqueda
       const searchCriteria = {
