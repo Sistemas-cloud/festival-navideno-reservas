@@ -203,6 +203,15 @@ export class ReservaModel {
       // Crear las reservas (ya validadas previamente)
       for (const asiento of asientos) {
 
+        // Verificar si el asiento ya existe
+        const { data: existing, error: checkError } = await supabase
+          .from('reservas')
+          .select('id')
+          .eq('fila', asiento.fila)
+          .eq('asiento', asiento.asiento)
+          .eq('nivel', nivel)
+          .single();
+
         // Si el asiento existe, actualizarlo. Si no, insertarlo (upsert)
         const reservaData = {
           fila: asiento.fila,
