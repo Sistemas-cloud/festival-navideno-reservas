@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { alumno_ref, clave } = body;
 
-    if (!alumno_ref || !clave) {
+    if (alumno_ref === undefined || alumno_ref === null || clave === undefined || clave === null) {
       return NextResponse.json({
         success: false,
         message: 'Número de control y contraseña son requeridos'
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const authModel = new AuthModel();
     const result = await authModel.authenticate(
       parseInt(alumno_ref),
-      parseInt(clave)
+      clave
     );
 
     if (result.success) {

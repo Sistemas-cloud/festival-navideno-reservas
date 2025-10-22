@@ -2,19 +2,98 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useReservas } from '@/hooks/useReservas';
 import { HermanosData } from '@/types';
 import { SeatingSection } from './SeatingSection';
+import { ComprobantePDF } from './ComprobantePDF';
 
 export const Dashboard: React.FC = () => {
   const { userData, logout } = useAuth();
   const [selectedSection, setSelectedSection] = useState<number>(0);
-
+  const [showComprobante, setShowComprobante] = useState(false);
+  const [comprobanteData, setComprobanteData] = useState<any>(null);
+  
+  // Llamar hooks antes de cualquier return condicional
+  const { eliminarReserva, loading } = useReservas(userData?.alumnoRef || 0);
+  
+  // Validar que userData existe antes de acceder a sus propiedades
   if (!userData) {
-    return <div>Cargando...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando información del usuario...</p>
+        </div>
+      </div>
+    );
   }
-
+  
   const hermanos = userData.hermanos;
   const alumnoRef = userData.alumnoRef;
+
+  // Función para eliminar un asiento individual
+  const eliminarAsientoIndividual = async (asiento: any) => {
+    try {
+      const asientoParaEliminar = [{
+        fila: asiento.fila,
+        asiento: asiento.asiento
+      }];
+      
+      const success = await eliminarReserva(asientoParaEliminar);
+      if (success) {
+        // Actualizar el comprobante removiendo el asiento eliminado
+        if (comprobanteData) {
+          const asientosActualizados = comprobanteData.asientos.filter((a: any) => 
+            !(a.fila === asiento.fila && a.asiento === asiento.asiento)
+          );
+          
+          if (asientosActualizados.length === 0) {
+            // Si no quedan asientos, cerrar el modal
+            setShowComprobante(false);
+            setComprobanteData(null);
+          } else {
+            // Actualizar el total y los asientos
+            const nuevoTotal = asientosActualizados.reduce((sum: number, a: any) => sum + a.precio, 0);
+            setComprobanteData({
+              ...comprobanteData,
+              asientos: asientosActualizados,
+              total: nuevoTotal
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error al eliminar asiento:', error);
+    }
+  };
+
+  // Función para obtener reservas y mostrar comprobante
+  const verMisBoletos = async () => {
+    try {
+      const response = await fetch(`/api/reservas?alumno_ref=${alumnoRef}`);
+      const result = await response.json();
+      
+      if (result.success && result.data.reservas.length > 0) {
+        // Transformar los datos para que coincidan con la interfaz del ComprobantePDF
+        const comprobanteData = {
+          alumnoNombre: result.data.alumno.nombre,
+          alumnoControl: result.data.alumno.control,
+          funcion: result.data.alumno.funcion,
+          asientos: result.data.reservas,
+          total: result.data.total,
+          fechaReserva: result.data.fechaReserva
+        };
+        
+        setComprobanteData(comprobanteData);
+        setShowComprobante(true);
+      } else {
+        alert('No tienes reservas registradas');
+      }
+    } catch (error) {
+      console.error('Error al obtener reservas:', error);
+      alert('Error al obtener tus reservas');
+    }
+  };
 
   // Determinar el nivel de cierre basado en el alumno actual
   let levelClose = 1;
@@ -90,10 +169,17 @@ export const Dashboard: React.FC = () => {
         }
 
         return (
-          <div key={index} className="bg-gray-100 border-2 border-blue-500 rounded-2xl p-4 mb-2">
-            <p><strong>Nombre:</strong> {hermano.nombre}</p>
-            <p><strong>No° de Control:</strong> {hermano.control}</p>
-            <p><strong>Nivel para la función:</strong> {aluNivel}</p>
+          <div key={index} className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-4 mb-3 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                {hermano.control.toString().slice(-2)}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-gray-800">{hermano.nombre}</p>
+                <p className="text-sm text-gray-600">Control: {hermano.control}</p>
+                <p className="text-sm text-blue-600 font-medium">{aluNivel}</p>
+              </div>
+            </div>
           </div>
         );
       });
@@ -111,99 +197,242 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <nav className="bg-blue-800 text-white p-4 rounded-lg m-2">
-        <div className="flex justify-between items-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      {/* Header Moderno */}
+      <nav className="bg-white/90 backdrop-blur-md shadow-lg border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-lg">🎫</span>
+              </div>
           <div>
-            <h1 className="text-xl font-bold">Portal de Reserva de Boletos</h1>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Festival Navideño
+                </h1>
+                <p className="text-sm text-gray-500">Portal de Reservas</p>
+              </div>
           </div>
           <div className="flex items-center space-x-4">
-            <span className="text-sm">
-              {alumnoRef} - {hermanos.find(h => h.control === alumnoRef)?.nombre || 'Usuario'}
-            </span>
+              <div className="text-right">
+                <p className="text-sm font-medium text-gray-800">
+                  {hermanos.find(h => h.control === alumnoRef)?.nombre || 'Usuario'}
+                </p>
+                <p className="text-xs text-gray-500">#{alumnoRef}</p>
+              </div>
             <button
               onClick={logout}
-              className="px-3 py-1 text-sm border-none rounded-lg cursor-pointer transition-colors duration-200 bg-red-600 text-white hover:bg-red-700"
+                className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-sm hover:shadow-md"
             >
-              Cerrar
+                Cerrar Sesión
             </button>
+            </div>
           </div>
         </div>
       </nav>
 
-      <div className="container mx-auto p-4">
-        {/* Imágenes de secciones */}
-        <div className="flex justify-center space-x-4 mb-6">
-          <img src="/costos.png" alt="Costos" className="w-48 h-16 object-contain" />
-          <img src="/oro.png" alt="Oro" className="w-48 h-16 object-contain" />
-          <img src="/plata.png" alt="Plata" className="w-48 h-16 object-contain" />
-          <img src="/bronce.png" alt="Bronce" className="w-48 h-16 object-contain" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
+            ¡Bienvenido al <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Festival Navideño!</span>
+          </h2>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Selecciona tu sección preferida y reserva tus boletos para una experiencia inolvidable
+          </p>
         </div>
 
-        {/* Selector de sección */}
-        <div className="text-center mb-6">
-          <label htmlFor="seccion" className="block text-sm font-medium text-gray-700 mb-2">
-            Selecciona la Sección
-          </label>
-          <select
-            id="seccion"
-            value={selectedSection}
-            onChange={(e) => {
-              const section = parseInt(e.target.value);
-              if (section > 0 && validateDates()) {
-                setSelectedSection(section);
+        {/* Cards de Secciones */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          {/* Sección Oro */}
+          <div 
+            className="group relative bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-2xl p-6 cursor-pointer transform hover:scale-105 hover:shadow-2xl transition-all duration-300"
+            onClick={() => {
+              if (validateDates()) {
+                setSelectedSection(1);
               }
             }}
-            className="w-64 px-4 py-2 border-2 border-gray-300 rounded-full text-blue-600 focus:outline-none focus:border-blue-500"
           >
-            <option value={0}>Seleccionar sección</option>
-            <option value={1}>Oro</option>
-            <option value={2}>Plata</option>
-            <option value={3}>Bronce (Palcos)</option>
-            <option value={4}>Bronce (Balcón)</option>
-          </select>
-        </div>
-
-        {/* Botón para ver boletos */}
-        <div className="text-center mb-6">
-          <button className="px-6 py-2 text-base border-none rounded-lg cursor-pointer transition-colors duration-200 bg-blue-600 text-white hover:bg-blue-700">
-            VER MIS BOLETOS
-          </button>
-        </div>
-
-        {/* Información de hermanos */}
-        <div className="bg-white p-6 rounded-lg shadow-lg">
-          <h3 className="text-lg font-bold text-center mb-4">Alumno y hermanos:</h3>
-          <div className="space-y-2">
-            {renderAlumnosInfo()}
-          </div>
-        </div>
-
-        {/* Carrusel de imágenes */}
-        <div className="mt-8">
-          <div className="bg-gradient-to-b from-blue-500 to-blue-800 rounded-lg p-4 mx-auto max-w-4xl">
-            <div className="carousel-container relative w-full h-96">
-              <div className="carousel-inner relative overflow-hidden h-full">
-                <div className="carousel-item active">
-                  <img 
-                    src="/escenario.png" 
-                    alt="Escenario" 
-                    className="carousel-image w-full h-full object-cover rounded-lg"
-                  />
+            <div className="absolute inset-0 bg-black/10 rounded-2xl group-hover:bg-black/20 transition-all duration-300"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">👑</span>
                 </div>
+                <div className="text-right">
+                  <p className="text-white/80 text-sm">Desde</p>
+                  <p className="text-white font-bold text-2xl">$180</p>
+                </div>
+              </div>
+              <h3 className="text-white font-bold text-xl mb-2">ZONA ORO</h3>
+              <p className="text-white/90 text-sm">Vista premium del escenario</p>
+              <div className="mt-4 flex items-center text-white/80 text-sm">
+                <span className="w-2 h-2 bg-white/60 rounded-full mr-2"></span>
+                Disponible
+              </div>
+            </div>
+          </div>
+
+          {/* Sección Plata */}
+          <div 
+            className="group relative bg-gradient-to-br from-gray-400 via-gray-500 to-gray-600 rounded-2xl p-6 cursor-pointer transform hover:scale-105 hover:shadow-2xl transition-all duration-300"
+            onClick={() => {
+              if (validateDates()) {
+                setSelectedSection(2);
+              }
+            }}
+          >
+            <div className="absolute inset-0 bg-black/10 rounded-2xl group-hover:bg-black/20 transition-all duration-300"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">🥈</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-white/80 text-sm">Desde</p>
+                  <p className="text-white font-bold text-2xl">$160</p>
+                </div>
+              </div>
+              <h3 className="text-white font-bold text-xl mb-2">ZONA PLATA</h3>
+              <p className="text-white/90 text-sm">Excelente vista y comodidad</p>
+              <div className="mt-4 flex items-center text-white/80 text-sm">
+                <span className="w-2 h-2 bg-white/60 rounded-full mr-2"></span>
+                Disponible
+              </div>
+            </div>
+          </div>
+
+          {/* Sección Bronce Palcos */}
+          <div 
+            className="group relative bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 rounded-2xl p-6 cursor-pointer transform hover:scale-105 hover:shadow-2xl transition-all duration-300"
+            onClick={() => {
+              if (validateDates()) {
+                setSelectedSection(3);
+              }
+            }}
+          >
+            <div className="absolute inset-0 bg-black/10 rounded-2xl group-hover:bg-black/20 transition-all duration-300"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">🏛️</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-white/80 text-sm">Desde</p>
+                  <p className="text-white font-bold text-2xl">$120</p>
+                </div>
+              </div>
+              <h3 className="text-white font-bold text-xl mb-2">BRONCE PALCOS</h3>
+              <p className="text-white/90 text-sm">Vista lateral privilegiada</p>
+              <div className="mt-4 flex items-center text-white/80 text-sm">
+                <span className="w-2 h-2 bg-white/60 rounded-full mr-2"></span>
+                Disponible
+              </div>
+            </div>
+          </div>
+
+          {/* Sección Bronce Balcón */}
+          <div 
+            className="group relative bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 rounded-2xl p-6 cursor-pointer transform hover:scale-105 hover:shadow-2xl transition-all duration-300"
+            onClick={() => {
+              if (validateDates()) {
+                setSelectedSection(4);
+              }
+            }}
+          >
+            <div className="absolute inset-0 bg-black/10 rounded-2xl group-hover:bg-black/20 transition-all duration-300"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">🏛️</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-white/80 text-sm">Desde</p>
+                  <p className="text-white font-bold text-2xl">$120</p>
+                </div>
+              </div>
+              <h3 className="text-white font-bold text-xl mb-2">BRONCE BALCÓN</h3>
+              <p className="text-white/90 text-sm">Vista elevada panorámica</p>
+              <div className="mt-4 flex items-center text-white/80 text-sm">
+                <span className="w-2 h-2 bg-white/60 rounded-full mr-2"></span>
+                Disponible
               </div>
             </div>
           </div>
         </div>
 
-        {/* Copos de nieve */}
-        {Array.from({ length: 19 }, (_, i) => (
-          <div key={i} className="snowflake">
+        {/* Botón Ver Mis Boletos */}
+        <div className="text-center mb-12">
+          <button 
+            onClick={verMisBoletos}
+            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+          >
+            <span className="flex items-center space-x-2">
+              <span>🎫</span>
+              <span>Ver Mis Boletos</span>
+            </span>
+          </button>
+        </div>
+
+        {/* Información de Alumnos */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-gray-200 mb-12">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">👨‍👩‍👧‍👦 Tu Familia</h3>
+            <p className="text-gray-600">Información de alumnos y hermanos registrados</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {renderAlumnosInfo()}
+          </div>
+        </div>
+
+        {/* Escenario Preview */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-gray-200">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold text-gray-800 mb-2">🎭 Nuestro Escenario</h3>
+            <p className="text-gray-600">Prepárate para una experiencia mágica</p>
+          </div>
+          <div className="relative overflow-hidden rounded-xl">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent z-10"></div>
+                  <img 
+                    src="/escenario.png" 
+              alt="Escenario del Festival Navideño" 
+              className="w-full h-64 object-cover transform hover:scale-105 transition-transform duration-500"
+            />
+            <div className="absolute bottom-4 left-4 z-20">
+              <h4 className="text-white font-bold text-lg">TECHNO XMAS ESCENARIO</h4>
+              <p className="text-white/90 text-sm">Una experiencia visual única</p>
+            </div>
+            </div>
+          </div>
+        </div>
+
+      {/* Copos de nieve animados */}
+      {Array.from({ length: 15 }, (_, i) => (
+        <div 
+          key={i} 
+          className="snowflake fixed text-blue-200 pointer-events-none"
+          style={{
+            left: `${Math.random() * 100}%`,
+            animationDelay: `${Math.random() * 3}s`,
+            animationDuration: `${3 + Math.random() * 2}s`
+          }}
+        >
             ❄
           </div>
         ))}
-      </div>
+
+      {/* Modal de Comprobante PDF */}
+      {showComprobante && comprobanteData && (
+        <ComprobantePDF
+          data={comprobanteData}
+          onClose={() => {
+            setShowComprobante(false);
+            setComprobanteData(null);
+          }}
+          onEliminarAsiento={eliminarAsientoIndividual}
+          loading={loading}
+        />
+      )}
     </div>
   );
 };

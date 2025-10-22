@@ -1,28 +1,20 @@
-import { getConnection } from '../database';
-import { Alumno, Reserva } from '../database';
+import { getSupabaseClient, Alumno, Reserva } from '../supabase';
 
 export class ReservaModel {
   
   async getAsientosDisponibles(alumnoRef: number): Promise<{ asientos: number }> {
     try {
-      const connection = await getConnection();
+      const supabase = getSupabaseClient();
       
-      // Obtener número de boletos ya reservados
-      const [ocupadosRows] = await connection.execute(
-        'SELECT COUNT(*) as ocupados FROM reservas WHERE referencia = ?',
-        [alumnoRef]
-      );
-      
-      const ocupados = (ocupadosRows as Array<{ocupados: number}>)[0].ocupados;
-
       // Obtener nivel y grado del alumno
-      const [alumnoRows] = await connection.execute(
-        'SELECT alumno_nivel, alumno_grado FROM alumno WHERE alumno_ref = ?',
-        [alumnoRef]
-      );
+      const { data: alumno, error: alumnoError } = await supabase
+        .from('alumno')
+        .select('alumno_nivel, alumno_grado, alumno_id')
+        .eq('alumno_ref', alumnoRef)
+        .single();
 
-      const alumno = (alumnoRows as Alumno[])[0];
-      if (!alumno) {
+      if (alumnoError || !alumno) {
+        console.error('Error al obtener alumno:', alumnoError);
         return { asientos: 0 };
       }
 
@@ -34,30 +26,51 @@ export class ReservaModel {
         nivel = 4;
       }
 
-      // Determinar cantidad de boletos permitidos
-      let boletos = 0;
+      // Determinar cantidad de boletos permitidos por familia
+      let boletosPorFamilia = 0;
       
       switch (nivel) {
         case 1:
-          boletos = 8;
+          boletosPorFamilia = 8;
           break;
         case 2:
-          boletos = 8;
+          boletosPorFamilia = 8;
           break;
         case 3:
-          boletos = 4;
+          boletosPorFamilia = 4;
           break;
         case 4:
-          boletos = 3;
+          boletosPorFamilia = 3;
           break;
       }
 
       // Casos especiales para alumnos de prueba
       if (alumnoRef === 22222 || alumnoRef === 33333 || alumnoRef === 44444) {
-        boletos = 1154;
+        boletosPorFamilia = 1154;
       }
 
-      const disponibles = boletos - ocupados;
+      // Obtener todos los hermanos de la familia
+      const hermanosIds = await this.getHermanosIds(alumno.alumno_id);
+      
+      // Contar todas las reservas de la familia
+      const { count: reservasFamilia, error: countError } = await supabase
+        .from('reservas')
+        .select('*', { count: 'exact', head: true })
+        .in('referencia', hermanosIds)
+        .eq('estado', 'reservado');
+
+      if (countError) {
+        console.error('Error al contar reservas de familia:', countError);
+        return { asientos: 0 };
+      }
+
+      const disponibles = boletosPorFamilia - (reservasFamilia || 0);
+      
+      console.log(`🎫 Validación por familia para alumno ${alumnoRef}:`);
+      console.log(`   👨‍👩‍👧‍👦 Hermanos en familia: ${hermanosIds.length}`);
+      console.log(`   🎫 Boletos permitidos por familia: ${boletosPorFamilia}`);
+      console.log(`   📋 Reservas existentes de familia: ${reservasFamilia || 0}`);
+      console.log(`   ✅ Boletos disponibles: ${Math.max(0, disponibles)}`);
       
       return { asientos: Math.max(0, disponibles) };
 
@@ -69,17 +82,23 @@ export class ReservaModel {
 
   async getReservas(alumnoRef: number): Promise<Reserva[]> {
     try {
-      const connection = await getConnection();
+      const supabase = getSupabaseClient();
       
       // Obtener nivel del alumno
       const nivel = await this.getNivelAlumno(alumnoRef);
       
-      const [rows] = await connection.execute(
-        'SELECT fila, asiento FROM reservas WHERE estado = "reservado" AND nivel = ?',
-        [nivel]
-      );
+      const { data: reservas, error } = await supabase
+        .from('reservas')
+        .select('fila, asiento')
+        .eq('estado', 'reservado')
+        .eq('nivel', nivel);
 
-      return rows as Reserva[];
+      if (error) {
+        console.error('Error al obtener reservas:', error);
+        return [];
+      }
+
+      return reservas as Reserva[];
 
     } catch (error) {
       console.error('Error al obtener reservas:', error);
@@ -89,17 +108,23 @@ export class ReservaModel {
 
   async getPagos(alumnoRef: number): Promise<Reserva[]> {
     try {
-      const connection = await getConnection();
+      const supabase = getSupabaseClient();
       
       // Obtener nivel del alumno
       const nivel = await this.getNivelAlumno(alumnoRef);
       
-      const [rows] = await connection.execute(
-        'SELECT fila, asiento FROM reservas WHERE estado = "pagado" AND nivel = ?',
-        [nivel]
-      );
+      const { data: pagos, error } = await supabase
+        .from('reservas')
+        .select('fila, asiento')
+        .eq('estado', 'pagado')
+        .eq('nivel', nivel);
 
-      return rows as Reserva[];
+      if (error) {
+        console.error('Error al obtener pagos:', error);
+        return [];
+      }
+
+      return pagos as Reserva[];
 
     } catch (error) {
       console.error('Error al obtener pagos:', error);
@@ -107,11 +132,65 @@ export class ReservaModel {
     }
   }
 
-  async crearReserva(asientos: Array<{fila: string, asiento: number}>, alumnoRef: number, _hermanosData: unknown[], precio: number, zona: string): Promise<{success: boolean, message?: string}> {
+  async crearReserva(
+    asientos: Array<{fila: string, asiento: number}>, 
+    alumnoRef: number, 
+    _hermanosData: unknown[], 
+    precio: number, 
+    zona: string
+  ): Promise<{success: boolean, message?: string}> {
     try {
-      const connection = await getConnection();
+      const supabase = getSupabaseClient();
       
       const nivel = await this.getNivelAlumno(alumnoRef);
+      
+      // Validar que la familia no exceda el límite de boletos
+      const asientosDisponibles = await this.getAsientosDisponibles(alumnoRef);
+      if (asientosDisponibles.asientos < asientos.length) {
+        return { 
+          success: false, 
+          message: `Solo puedes reservar ${asientosDisponibles.asientos} boletos más. Tu familia ya tiene reservas que limitan la cantidad disponible.` 
+        };
+      }
+
+      // Validación previa: verificar que todos los asientos estén disponibles
+      const asientosParaVerificar = asientos.map(a => `${a.fila}${a.asiento}`);
+      const { data: asientosOcupados, error: verificarError } = await supabase
+        .from('reservas')
+        .select('fila, asiento, estado, nivel, referencia')
+        .in('estado', ['reservado', 'pagado']);
+
+      if (verificarError) {
+        console.error('Error al verificar disponibilidad de asientos:', verificarError);
+        return { success: false, message: 'Error al verificar disponibilidad de asientos.' };
+      }
+
+      // Verificar duplicidad en la selección actual
+      const asientosUnicos = new Set(asientosParaVerificar);
+      if (asientosUnicos.size !== asientos.length) {
+        return { 
+          success: false, 
+          message: 'Hay asientos duplicados en tu selección. Por favor, revisa tu elección.' 
+        };
+      }
+
+      // Verificar si algún asiento ya está ocupado
+      for (const asiento of asientos) {
+        const asientoOcupado = asientosOcupados?.find(ao => 
+          ao.fila === asiento.fila && ao.asiento === asiento.asiento
+        );
+        
+        if (asientoOcupado) {
+          const estadoTexto = asientoOcupado.estado === 'reservado' ? 'reservado' : 'pagado';
+          console.log(`❌ Asiento ${asiento.fila}${asiento.asiento} ya está ${estadoTexto} en función ${asientoOcupado.nivel} por alumno ${asientoOcupado.referencia}`);
+          return { 
+            success: false, 
+            message: `El asiento ${asiento.fila}${asiento.asiento} ya está ${estadoTexto} en la función ${asientoOcupado.nivel}.` 
+          };
+        }
+      }
+
+      console.log(`✅ Validación de duplicidad exitosa para ${asientos.length} asientos del alumno ${alumnoRef}`);
       
       // Calcular fecha límite (mañana o 2024-12-09, lo que sea mayor)
       const fechaActual = new Date();
@@ -121,30 +200,43 @@ export class ReservaModel {
       
       const fechaFormateada = fechaFinal.toISOString().split('T')[0];
 
-      // Verificar si hay asientos disponibles y reservar
+      // Crear las reservas (ya validadas previamente)
       for (const asiento of asientos) {
-        // Verificar si el asiento ya está reservado
-        const [existingRows] = await connection.execute(
-          'SELECT estado FROM reservas WHERE fila = ? AND asiento = ? AND nivel = ?',
-          [asiento.fila, asiento.asiento, nivel]
-        );
 
-        const existing = (existingRows as Array<{estado: string}>)[0];
-        
-        if (existing && existing.estado === 'reservado') {
-          return { success: false, message: `El asiento ${asiento.fila}${asiento.asiento} ya está reservado.` };
+        // Si el asiento existe, actualizarlo. Si no, insertarlo (upsert)
+        const reservaData = {
+          fila: asiento.fila,
+          asiento: asiento.asiento,
+          estado: 'reservado' as const,
+          referencia: alumnoRef,
+          nivel: nivel,
+          fecha_pago: fechaFormateada,
+          precio: precio,
+          zona: zona
+        };
+
+        if (existing && existing.id) {
+          // Actualizar reserva existente
+          const { error: updateError } = await supabase
+            .from('reservas')
+            .update(reservaData)
+            .eq('id', existing.id);
+
+          if (updateError) {
+            console.error('Error al actualizar reserva:', updateError);
+            return { success: false, message: 'Error al actualizar la reserva.' };
+          }
+        } else {
+          // Insertar nueva reserva
+          const { error: insertError } = await supabase
+            .from('reservas')
+            .insert(reservaData);
+
+          if (insertError) {
+            console.error('Error al insertar reserva:', insertError);
+            return { success: false, message: 'Error al crear la reserva.' };
+          }
         }
-
-        // Crear o actualizar la reserva
-        await connection.execute(
-          `INSERT INTO reservas (fila, asiento, estado, referencia, nivel, fecha_pago, precio, zona) 
-           VALUES (?, ?, 'reservado', ?, ?, ?, ?, ?) 
-           ON DUPLICATE KEY UPDATE estado = 'reservado', referencia = ?, nivel = ?, fecha_pago = ?, precio = ?, zona = ?`,
-          [
-            asiento.fila, asiento.asiento, alumnoRef, nivel, fechaFormateada, precio, zona,
-            alumnoRef, nivel, fechaFormateada, precio, zona
-          ]
-        );
       }
 
       return { success: true };
@@ -155,17 +247,170 @@ export class ReservaModel {
     }
   }
 
+  private async getHermanosIds(alumnoId: number): Promise<number[]> {
+    try {
+      const supabase = getSupabaseClient();
+      
+      // Obtener datos de los padres/tutores
+      const { data: padres, error: padresError } = await supabase
+        .from('alumno_familiar')
+        .select('familiar_app, familiar_apm, familiar_nombre, familiar_cel, familiar_curp')
+        .eq('alumno_id', alumnoId)
+        .in('tutor_id', [1, 2])
+        .limit(2);
+
+      if (padresError || !padres || padres.length === 0) {
+        console.error('Error al obtener padres:', padresError);
+        return [alumnoId]; // Solo el alumno actual si no hay padres
+      }
+
+      const hermanosIds = new Set<number>();
+      hermanosIds.add(alumnoId); // Incluir al alumno actual
+
+      // Recopilar criterios de búsqueda
+      const searchCriteria = {
+        telefonos: new Set<string>(),
+        curps: new Set<string>()
+      };
+
+      for (const padre of padres) {
+        if (padre.familiar_cel) {
+          searchCriteria.telefonos.add(padre.familiar_cel);
+        }
+        if (padre.familiar_curp) {
+          searchCriteria.curps.add(padre.familiar_curp);
+        }
+      }
+
+      // Buscar hermanos por teléfono
+      if (searchCriteria.telefonos.size > 0) {
+        const { data: celularRows } = await supabase
+          .from('alumno_familiar')
+          .select('alumno_id')
+          .in('familiar_cel', Array.from(searchCriteria.telefonos));
+
+        if (celularRows) {
+          celularRows.forEach((row: { alumno_id: number }) => hermanosIds.add(row.alumno_id));
+        }
+      }
+
+      // Buscar hermanos por CURP
+      if (searchCriteria.curps.size > 0) {
+        const { data: curpRows } = await supabase
+          .from('alumno_familiar')
+          .select('alumno_id')
+          .in('familiar_curp', Array.from(searchCriteria.curps));
+
+        if (curpRows) {
+          curpRows.forEach((row: { alumno_id: number }) => hermanosIds.add(row.alumno_id));
+        }
+      }
+
+      // Obtener los números de control de los hermanos
+      const { data: hermanos } = await supabase
+        .from('alumno')
+        .select('alumno_ref')
+        .in('alumno_id', Array.from(hermanosIds))
+        .eq('alumno_ciclo_escolar', 22);
+
+      return hermanos ? hermanos.map(h => h.alumno_ref) : [alumnoId];
+
+    } catch (error) {
+      console.error('Error al obtener hermanos:', error);
+      return [alumnoId]; // Solo el alumno actual en caso de error
+    }
+  }
+
+  async eliminarReserva(
+    asientos: Array<{fila: string, asiento: number}>, 
+    alumnoRef: number
+  ): Promise<{success: boolean, message?: string}> {
+    try {
+      const supabase = getSupabaseClient();
+      
+      const nivel = await this.getNivelAlumno(alumnoRef);
+      
+      console.log(`🗑️ Iniciando eliminación de ${asientos.length} reservas para alumno ${alumnoRef}`);
+      
+      // Verificar que los asientos pertenecen al alumno y están reservados (no pagados)
+      for (const asiento of asientos) {
+        const { data: reservaExistente, error: checkError } = await supabase
+          .from('reservas')
+          .select('estado, id, referencia, nivel')
+          .eq('fila', asiento.fila)
+          .eq('asiento', asiento.asiento)
+          .eq('nivel', nivel)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          console.error('Error al verificar reserva:', checkError);
+          return { success: false, message: 'Error al verificar la reserva.' };
+        }
+
+        if (!reservaExistente) {
+          return { 
+            success: false, 
+            message: `El asiento ${asiento.fila}${asiento.asiento} no tiene una reserva activa.` 
+          };
+        }
+
+        if (reservaExistente.estado === 'pagado') {
+          return { 
+            success: false, 
+            message: `El asiento ${asiento.fila}${asiento.asiento} ya está pagado y no se puede eliminar.` 
+          };
+        }
+
+        if (reservaExistente.referencia !== alumnoRef) {
+          return { 
+            success: false, 
+            message: `El asiento ${asiento.fila}${asiento.asiento} no pertenece a tu reserva.` 
+          };
+        }
+      }
+
+      // Eliminar las reservas
+      for (const asiento of asientos) {
+        const { error: deleteError } = await supabase
+          .from('reservas')
+          .delete()
+          .eq('fila', asiento.fila)
+          .eq('asiento', asiento.asiento)
+          .eq('nivel', nivel)
+          .eq('referencia', alumnoRef)
+          .eq('estado', 'reservado');
+
+        if (deleteError) {
+          console.error('Error al eliminar reserva:', deleteError);
+          return { success: false, message: 'Error al eliminar la reserva.' };
+        }
+
+        console.log(`✅ Asiento ${asiento.fila}${asiento.asiento} eliminado exitosamente`);
+      }
+
+      console.log(`🎉 ${asientos.length} reservas eliminadas exitosamente para alumno ${alumnoRef}`);
+      return { success: true, message: `${asientos.length} reserva(s) eliminada(s) exitosamente.` };
+
+    } catch (error) {
+      console.error('Error al eliminar reserva:', error);
+      return { success: false, message: 'Error interno del servidor.' };
+    }
+  }
+
   private async getNivelAlumno(alumnoRef: number): Promise<number> {
     try {
-      const connection = await getConnection();
+      const supabase = getSupabaseClient();
       
-      const [rows] = await connection.execute(
-        'SELECT alumno_nivel, alumno_grado FROM alumno WHERE alumno_ref = ?',
-        [alumnoRef]
-      );
+      const { data: alumno, error } = await supabase
+        .from('alumno')
+        .select('alumno_nivel, alumno_grado')
+        .eq('alumno_ref', alumnoRef)
+        .single();
 
-      const alumno = (rows as Alumno[])[0];
-      if (!alumno) return 1;
+      if (error || !alumno) {
+        console.error('Error al obtener nivel del alumno:', error);
+        return 1;
+      }
 
       let nivel = alumno.alumno_nivel;
       const grado = alumno.alumno_grado;

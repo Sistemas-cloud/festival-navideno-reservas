@@ -1,0 +1,79 @@
+╔═══════════════════════════════════════════════════════════════╗
+║  ⚠️  SOLUCIÓN - Error de Sintaxis PHP                        ║
+╚═══════════════════════════════════════════════════════════════╝
+
+PROBLEMA:
+  Parse error: syntax error, unexpected '?' in migrar.php on line 256
+
+CAUSA:
+  Tu servidor usa PHP 5.x (antiguo)
+  El operador ?? (null coalescing) requiere PHP 7.0+
+
+SOLUCIÓN:
+  Usa el archivo compatible: migrar-completo-php5.php
+
+═══════════════════════════════════════════════════════════════
+
+📋 PASOS PARA MIGRAR (Versión PHP 5 Compatible):
+
+1️⃣  Copia el archivo correcto a tu servidor:
+    
+    migrar-completo-php5.php   ← USA ESTE
+
+2️⃣  Abre en tu navegador:
+    
+    http://tu-servidor.com/ruta/migrar-completo-php5.php
+
+3️⃣  O ejecuta desde terminal:
+    
+    php migrar-completo-php5.php
+
+═══════════════════════════════════════════════════════════════
+
+📊 DIFERENCIAS ENTRE LOS ARCHIVOS:
+
+❌ migrar-completo.php      → PHP 7.0+ (operador ??)
+✅ migrar-completo-php5.php → PHP 5.3+ (compatible)
+
+El archivo PHP5 hace exactamente lo mismo, solo con sintaxis
+compatible con versiones antiguas de PHP.
+
+═══════════════════════════════════════════════════════════════
+
+✅ VERIFICAR VERSIÓN DE PHP:
+
+En terminal:
+  php -v
+
+En navegador (crear archivo info.php):
+  <?php phpinfo(); ?>
+
+═══════════════════════════════════════════════════════════════
+
+🎯 QUÉ HACE EL SCRIPT:
+
+Para cada tabla (alumno, alumno_detalles, alumno_familiar):
+  1. Conecta a MySQL local
+  2. Obtiene todos los registros
+  3. Vacía la tabla en Supabase
+  4. Envía datos en lotes de 500
+  5. Muestra progreso en tiempo real
+
+Tiempo estimado: 1-2 minutos
+
+═══════════════════════════════════════════════════════════════
+
+⚠️  IMPORTANTE:
+
+- Asegúrate de haber ejecutado el SQL en Supabase primero:
+  supabase-schema-completo.sql
+
+- El script VACÍA las tablas en Supabase antes de migrar
+  (esto es intencional para evitar duplicados)
+
+═══════════════════════════════════════════════════════════════
+
+¿DUDAS?
+
+Ver archivo completo: INSTRUCCIONES_MIGRACION_COMPLETA.md
+

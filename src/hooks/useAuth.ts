@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { UserData } from '@/types';
 
 export const useAuth = () => {
+  const router = useRouter();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,7 +25,7 @@ export const useAuth = () => {
     }
   }, []);
 
-  const login = async (alumnoRef: number, clave: number): Promise<boolean> => {
+  const login = async (alumnoRef: number, clave: string | number): Promise<boolean> => {
     setLoading(true);
     try {
       const response = await fetch('/api/auth/login', {
@@ -40,15 +42,31 @@ export const useAuth = () => {
       const result = await response.json();
 
       if (result.success && result.data) {
-        const userData: UserData = {
+        const newUserData: UserData = {
           alumnoRef,
           alumnoNombre: '', // Se puede obtener del nombre completo más adelante
           hermanos: result.data,
         };
 
-        setUserData(userData);
+        localStorage.setItem('userData', JSON.stringify(newUserData));
+        
+        // Actualizar estado para forzar re-render
+        setUserData(newUserData);
         setIsAuthenticated(true);
-        localStorage.setItem('userData', JSON.stringify(userData));
+        
+        // Forzar navegación y refresh
+        setTimeout(() => {
+          router.push('/');
+          router.refresh();
+          
+          // Fallback: recargar página si no funciona el router
+          setTimeout(() => {
+            if (typeof window !== 'undefined') {
+              window.location.reload();
+            }
+          }, 500);
+        }, 100);
+        
         return true;
       } else {
         alert(result.message || 'Error en el login');
@@ -64,9 +82,24 @@ export const useAuth = () => {
   };
 
   const logout = () => {
+    localStorage.removeItem('userData');
+    
+    // Actualizar estado para forzar re-render
     setUserData(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('userData');
+    
+    // Forzar navegación y refresh
+    setTimeout(() => {
+      router.push('/');
+      router.refresh();
+      
+      // Fallback: recargar página si no funciona el router
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+      }, 500);
+    }, 100);
   };
 
   return {

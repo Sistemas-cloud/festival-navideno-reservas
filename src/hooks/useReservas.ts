@@ -102,6 +102,41 @@ export const useReservas = (alumnoRef: number) => {
     }
   };
 
+  const eliminarReserva = async (asientos: Asiento[]): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/reservas/eliminar-reserva', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          asientos,
+          alumno_ref: alumnoRef,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Actualizar datos después de la eliminación
+        await fetchAsientosDisponibles();
+        await fetchReservas();
+        alert(result.message || 'Reserva eliminada exitosamente');
+        return true;
+      } else {
+        alert(result.message || 'Error al eliminar la reserva');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error al eliminar reserva:', error);
+      alert('Error de conexión');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (alumnoRef) {
       fetchAsientosDisponibles();
@@ -116,6 +151,7 @@ export const useReservas = (alumnoRef: number) => {
     pagos,
     loading,
     crearReserva,
+    eliminarReserva,
     refetch: () => {
       fetchAsientosDisponibles();
       fetchReservas();

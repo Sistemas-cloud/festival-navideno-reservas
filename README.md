@@ -29,15 +29,15 @@ Sistema moderno de reserva de boletos para eventos navideños escolares, desarro
 ### Arquitectura
 - **Frontend**: React 19 con Next.js
 - **Backend**: API Routes de Next.js
-- **Base de datos**: MySQL con mysql2
+- **Base de datos**: Supabase (PostgreSQL)
 - **Autenticación**: JWT tokens
 - **Estilos**: Tailwind CSS con animaciones personalizadas
 
 ## 📋 Requisitos Previos
 
 - Node.js 18+ 
-- MySQL 5.7+
-- Base de datos existente con las tablas del sistema original
+- Cuenta de Supabase (gratis)
+- Credenciales de Supabase configuradas
 
 ## 🔧 Instalación
 
@@ -51,19 +51,21 @@ cd /home/sistemam/Escritorio/festival-navideno-reservas
 npm install
 ```
 
-3. **Configurar variables de entorno**
+3. **Configurar Supabase**
 ```bash
-cp config.env.example config.env
-# Editar config.env con tus credenciales de base de datos
+# 1. Ve a https://supabase.com y crea un proyecto
+# 2. Ejecuta el script SQL: supabase-schema.sql en SQL Editor
+# 3. Configura tus variables en config.env
 ```
 
-4. **Configurar la base de datos**
-Asegúrate de que tu base de datos MySQL tenga las siguientes tablas:
-- `alumno`
-- `alumno_detalles`
-- `alumno_familiar`
-- `reservas`
-- `datos_facturacion`
+4. **Configurar variables de entorno**
+Edita `config.env` con tus credenciales de Supabase:
+```env
+NEXT_PUBLIC_SUPABASE_URL=tu-url-de-supabase
+SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key
+```
+
+Ver `INSTRUCCIONES_FINALES.md` para detalles completos.
 
 ## 🚀 Ejecución
 
