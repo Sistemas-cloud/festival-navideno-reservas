@@ -11,9 +11,12 @@ export class AuthModel {
   
   async authenticate(alumnoRef: number, clave: string | number): Promise<{ success: boolean; data?: unknown; message?: string }> {
     try {
+      console.log('🔐 AuthModel: Iniciando autenticación para alumno:', alumnoRef);
       const supabase = getSupabaseClient();
+      console.log('✅ AuthModel: Cliente de Supabase obtenido');
       
       // Verificar si el alumno existe y está activo
+      console.log('🔍 AuthModel: Buscando alumno en base de datos...');
       const { data: alumno, error: alumnoError } = await supabase
         .from('alumno')
         .select('alumno_ref, alumno_app, alumno_apm, alumno_nombre, alumno_id, alumno_nivel, alumno_grado, alumno_ciclo_escolar, alumno_status')
@@ -22,9 +25,12 @@ export class AuthModel {
         .single();
 
       if (alumnoError || !alumno) {
-        console.error('Error al buscar alumno:', alumnoError);
+        console.error('❌ AuthModel: Error al buscar alumno:', alumnoError);
+        console.error('❌ AuthModel: Datos del alumno:', alumno);
         return { success: false, message: 'Número de control desconocido.' };
       }
+      
+      console.log('✅ AuthModel: Alumno encontrado:', alumno.alumno_nombre);
 
       // Verificar contraseña
       const { error: detalleError } = await supabase
