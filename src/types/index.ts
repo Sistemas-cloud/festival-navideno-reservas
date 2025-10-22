@@ -69,3 +69,19 @@ export interface SectionConfig {
   disabledSeats?: Array<{ row: string; seat: number }>;
   specialLayout?: boolean;
 }
+
+export interface AsientoComprobante {
+  fila: string;
+  asiento: number;
+  precio: number;
+  zona: string;
+}
+
+export interface ComprobanteData {
+  alumnoNombre: string;
+  alumnoControl: number;
+  funcion: string;
+  asientos: AsientoComprobante[];
+  total: number;
+  fechaReserva: string;
+}

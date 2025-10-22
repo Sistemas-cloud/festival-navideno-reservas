@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useReservas } from '@/hooks/useReservas';
-import { HermanosData } from '@/types';
+import { HermanosData, ComprobanteData, AsientoComprobante } from '@/types';
 import { SeatingSection } from './SeatingSection';
 import { ComprobantePDF } from './ComprobantePDF';
 
@@ -11,7 +11,7 @@ export const Dashboard: React.FC = () => {
   const { userData, logout } = useAuth();
   const [selectedSection, setSelectedSection] = useState<number>(0);
   const [showComprobante, setShowComprobante] = useState(false);
-  const [comprobanteData, setComprobanteData] = useState<any>(null);
+  const [comprobanteData, setComprobanteData] = useState<ComprobanteData | null>(null);
   
   // Llamar hooks antes de cualquier return condicional
   const { eliminarReserva, loading } = useReservas(userData?.alumnoRef || 0);
@@ -32,7 +32,7 @@ export const Dashboard: React.FC = () => {
   const alumnoRef = userData.alumnoRef;
 
   // Función para eliminar un asiento individual
-  const eliminarAsientoIndividual = async (asiento: any) => {
+  const eliminarAsientoIndividual = async (asiento: AsientoComprobante) => {
     try {
       const asientoParaEliminar = [{
         fila: asiento.fila,
@@ -43,7 +43,7 @@ export const Dashboard: React.FC = () => {
       if (success) {
         // Actualizar el comprobante removiendo el asiento eliminado
         if (comprobanteData) {
-          const asientosActualizados = comprobanteData.asientos.filter((a: any) => 
+          const asientosActualizados = comprobanteData.asientos.filter((a: AsientoComprobante) => 
             !(a.fila === asiento.fila && a.asiento === asiento.asiento)
           );
           
@@ -53,7 +53,7 @@ export const Dashboard: React.FC = () => {
             setComprobanteData(null);
           } else {
             // Actualizar el total y los asientos
-            const nuevoTotal = asientosActualizados.reduce((sum: number, a: any) => sum + a.precio, 0);
+            const nuevoTotal = asientosActualizados.reduce((sum: number, a: AsientoComprobante) => sum + a.precio, 0);
             setComprobanteData({
               ...comprobanteData,
               asientos: asientosActualizados,
