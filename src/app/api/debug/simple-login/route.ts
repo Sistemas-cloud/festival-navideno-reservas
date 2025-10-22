@@ -45,12 +45,12 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Cliente de Supabase creado');
 
-    // Buscar alumno
+    // Buscar alumno (alumno_ref como string)
     console.log('🔍 Buscando alumno...');
     const { data: alumno, error: alumnoError } = await supabase
       .from('alumno')
       .select('alumno_id, alumno_ref, alumno_nombre, alumno_status, alumno_nivel, alumno_grado')
-      .eq('alumno_ref', parseInt(alumno_ref))
+      .eq('alumno_ref', alumno_ref.toString())
       .single();
 
     if (alumnoError || !alumno) {

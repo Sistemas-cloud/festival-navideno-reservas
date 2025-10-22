@@ -44,11 +44,11 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Buscar alumno
+    // Buscar alumno (alumno_ref como string)
     const { data: alumno, error: alumnoError } = await supabase
       .from('alumno')
       .select('alumno_id, alumno_ref, alumno_app, alumno_apm, alumno_nombre, alumno_nivel, alumno_grado, alumno_status')
-      .eq('alumno_ref', parseInt(alumno_ref))
+      .eq('alumno_ref', alumno_ref.toString())
       .not('alumno_status', 'in', '(0,3)')
       .single();
 
