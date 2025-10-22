@@ -2,24 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🔐 Iniciando proceso de login...');
+    console.log('🔐 Login simple iniciado...');
     
     const body = await request.json();
     const { alumno_ref, clave } = body;
     
     console.log('📝 Datos recibidos:', { alumno_ref, clave: clave ? '***' : 'undefined' });
 
-    if (alumno_ref === undefined || alumno_ref === null || clave === undefined || clave === null) {
-      console.log('❌ Datos faltantes:', { alumno_ref, clave: clave ? 'presente' : 'faltante' });
+    if (!alumno_ref || !clave) {
       return NextResponse.json({
         success: false,
-        message: 'Número de control y contraseña son requeridos'
+        message: 'alumno_ref y clave son requeridos'
       }, { status: 400 });
     }
-
-    console.log('🔍 Verificando variables de entorno...');
-    console.log('NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅ Configurada' : '❌ Faltante');
-    console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? '✅ Configurada' : '❌ Faltante');
 
     // Verificar variables de entorno
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -29,13 +24,17 @@ export async function POST(request: NextRequest) {
       console.error('❌ Variables de entorno faltantes');
       return NextResponse.json({
         success: false,
-        message: 'Configuración del servidor incompleta'
+        message: 'Variables de entorno de Supabase no configuradas',
+        details: {
+          supabaseUrl: supabaseUrl ? '✅' : '❌',
+          supabaseKey: supabaseKey ? '✅' : '❌'
+        }
       }, { status: 500 });
     }
 
-    console.log('🔐 Iniciando autenticación directa...');
-    
-    // Crear cliente de Supabase directamente
+    console.log('✅ Variables de entorno verificadas');
+
+    // Crear cliente de Supabase directamente sin interceptores
     const { createClient } = await import('@supabase/supabase-js');
     const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: {
@@ -44,65 +43,86 @@ export async function POST(request: NextRequest) {
       }
     });
 
+    console.log('✅ Cliente de Supabase creado');
+
     // Buscar alumno
+    console.log('🔍 Buscando alumno...');
     const { data: alumno, error: alumnoError } = await supabase
       .from('alumno')
-      .select('alumno_id, alumno_ref, alumno_app, alumno_apm, alumno_nombre, alumno_nivel, alumno_grado, alumno_status')
+      .select('alumno_id, alumno_ref, alumno_nombre, alumno_status, alumno_nivel, alumno_grado')
       .eq('alumno_ref', parseInt(alumno_ref))
-      .not('alumno_status', 'in', '(0,3)')
       .single();
 
     if (alumnoError || !alumno) {
-      console.error('❌ Error al buscar alumno:', alumnoError);
+      console.error('❌ Error buscando alumno:', alumnoError);
       return NextResponse.json({
         success: false,
-        message: 'Número de control desconocido'
-      }, { status: 401 });
+        message: 'Alumno no encontrado',
+        details: {
+          error: alumnoError?.message,
+          alumno_ref: alumno_ref
+        }
+      }, { status: 404 });
     }
 
+    console.log('✅ Alumno encontrado:', alumno.alumno_nombre);
+
     // Verificar contraseña
-    const { error: detalleError } = await supabase
+    console.log('🔍 Verificando contraseña...');
+    const { data: detalle, error: detalleError } = await supabase
       .from('alumno_detalles')
-      .select('*')
+      .select('alumno_id, alumno_clave')
       .eq('alumno_id', alumno.alumno_id)
       .eq('alumno_clave', clave.toString())
       .single();
 
     const isMasterKey = clave.toString() === '2671';
-    if (detalleError && !isMasterKey) {
-      console.error('❌ Error al verificar contraseña:', detalleError);
+    const passwordValid = detalleError === null || isMasterKey;
+
+    if (!passwordValid) {
+      console.error('❌ Contraseña incorrecta');
       return NextResponse.json({
         success: false,
-        message: 'Contraseña incorrecta'
+        message: 'Contraseña incorrecta',
+        details: {
+          error: detalleError?.message,
+          isMasterKey: isMasterKey
+        }
       }, { status: 401 });
     }
 
+    console.log('✅ Contraseña verificada');
+
     // Obtener hermanos (simplificado)
-    const { data: hermanos } = await supabase
+    console.log('🔍 Obteniendo hermanos...');
+    const { data: hermanos, error: hermanosError } = await supabase
       .from('alumno_familiar')
       .select('alumno_id')
       .eq('alumno_id', alumno.alumno_id)
       .limit(10);
 
-    const hermanosData = hermanos?.map(() => ({
+    const hermanosData = hermanos?.map(h => ({
       control: alumno.alumno_ref,
-      nombre: `${alumno.alumno_app} ${alumno.alumno_apm} ${alumno.alumno_nombre}`,
+      nombre: `${alumno.alumno_nombre}`,
       nivel: alumno.alumno_nivel,
       grado: alumno.alumno_grado
     })) || [];
 
-    console.log('✅ Login exitoso');
+    console.log('✅ Login simple exitoso');
+
     return NextResponse.json({
       success: true,
+      message: 'Login exitoso',
       data: hermanosData
     });
 
   } catch (error) {
-    console.error('💥 Error crítico en login:', error);
-    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack available');
+    console.error('💥 Error en login simple:', error);
     return NextResponse.json({
       success: false,
-      message: 'Error interno del servidor'
+      message: 'Error interno del servidor',
+      error: error instanceof Error ? error.message : 'Error desconocido',
+      stack: error instanceof Error ? error.stack : undefined
     }, { status: 500 });
   }
 }
