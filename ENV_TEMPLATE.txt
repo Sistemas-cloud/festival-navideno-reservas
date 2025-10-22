@@ -1,0 +1,32 @@
+# Variables de Entorno para Festival Navideño
+# Configurar en Vercel Dashboard → Settings → Environment Variables
+
+# ===========================================
+# SUPABASE CONFIGURATION (REQUERIDAS)
+# ===========================================
+
+# URL de tu proyecto Supabase
+# Obtener en: Supabase Dashboard → Settings → API → Project URL
+NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
+
+# Service Role Key de Supabase (clave privada)
+# Obtener en: Supabase Dashboard → Settings → API → service_role key
+# ⚠️ NUNCA compartir esta clave públicamente
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1LXByb3llY3RvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTY0MDk5NTIwMCwiZXhwIjoxOTU2NTcxMjAwfQ.ejemplo-de-token
+
+# ===========================================
+# INSTRUCCIONES PARA VERCEL
+# ===========================================
+
+# 1. Ve a Vercel Dashboard → Settings → Environment Variables
+# 2. Agrega las dos variables de arriba
+# 3. Asegúrate de seleccionar: Production, Preview, Development
+# 4. Haz redeploy del proyecto
+
+# ===========================================
+# VERIFICACIÓN
+# ===========================================
+
+# Después de configurar, verifica con:
+# https://tu-app.vercel.app/api/debug/env
+# https://tu-app.vercel.app/api/debug/missing-config
