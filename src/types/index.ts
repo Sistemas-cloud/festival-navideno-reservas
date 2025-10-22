@@ -71,15 +71,15 @@ export interface SectionConfig {
 }
 
 export interface AsientoComprobante {
+  seccion: string;
   fila: string;
   asiento: number;
   precio: number;
-  zona: string;
 }
 
 export interface ComprobanteData {
   alumnoNombre: string;
-  alumnoControl: number;
+  alumnoControl: string;
   funcion: string;
   asientos: AsientoComprobante[];
   total: number;

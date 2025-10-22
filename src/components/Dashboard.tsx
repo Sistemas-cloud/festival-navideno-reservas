@@ -5,6 +5,14 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { useReservas } from '@/hooks/useReservas';
 import { HermanosData, ComprobanteData, AsientoComprobante } from '@/types';
+
+interface ReservaAPI {
+  zona?: string;
+  seccion?: string;
+  fila: string;
+  asiento: number;
+  precio: number;
+}
 import { SeatingSection } from './SeatingSection';
 import { ComprobantePDF } from './ComprobantePDF';
 
@@ -78,9 +86,14 @@ export const Dashboard: React.FC = () => {
         // Transformar los datos para que coincidan con la interfaz del ComprobantePDF
         const comprobanteData = {
           alumnoNombre: result.data.alumno.nombre,
-          alumnoControl: result.data.alumno.control,
+          alumnoControl: result.data.alumno.control.toString(),
           funcion: result.data.alumno.funcion,
-          asientos: result.data.reservas,
+          asientos: result.data.reservas.map((reserva: ReservaAPI) => ({
+            seccion: reserva.zona || reserva.seccion,
+            fila: reserva.fila,
+            asiento: reserva.asiento,
+            precio: reserva.precio
+          })),
           total: result.data.total,
           fechaReserva: result.data.fechaReserva
         };

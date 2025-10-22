@@ -2,27 +2,12 @@
 
 import { useRef } from 'react';
 import jsPDF from 'jspdf';
-
-interface AsientoReservado {
-  seccion: string;
-  fila: string;
-  asiento: number;
-  precio: number;
-}
-
-interface ComprobanteData {
-  alumnoNombre: string;
-  alumnoControl: string;
-  funcion: string;
-  asientos: AsientoReservado[];
-  total: number;
-  fechaReserva: string;
-}
+import { ComprobanteData, AsientoComprobante } from '@/types';
 
 interface ComprobantePDFProps {
   data: ComprobanteData;
   onClose: () => void;
-  onEliminarAsiento?: (asiento: AsientoReservado) => void;
+  onEliminarAsiento?: (asiento: AsientoComprobante) => void;
   loading?: boolean;
 }
 
