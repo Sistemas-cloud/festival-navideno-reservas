@@ -2,10 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Estilos personalizados para el login */
+/* Estilos personalizados para el login navideño */
 .login-container {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #334155 50%, #1e293b 75%, #0f172a 100%);
   min-height: 100vh;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 50%, #faf5ff 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,108 +13,220 @@
   overflow: hidden;
 }
 
+/* Efecto de estrellas de fondo */
+.login-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, #eee, transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 90px 40px, #fff, transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.6), transparent),
+    radial-gradient(2px 2px at 160px 30px, #ddd, transparent);
+  background-repeat: repeat;
+  background-size: 200px 100px;
+  animation: sparkle 20s linear infinite;
+  z-index: 1;
+}
+
+@keyframes sparkle {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100px); }
+}
+
 .login-form {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  border-radius: 24px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: 25px;
+  padding: 50px 40px;
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.1);
   width: 100%;
-  max-width: 400px;
-  margin: 16px;
+  max-width: 450px;
+  position: relative;
+  z-index: 10;
+  animation: glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from {
+    box-shadow: 
+      0 25px 50px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 0 20px rgba(59, 130, 246, 0.3);
+  }
+  to {
+    box-shadow: 
+      0 25px 50px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      0 0 40px rgba(59, 130, 246, 0.6);
+  }
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 40px;
 }
 
 .login-icon {
-  width: 80px;
-  height: 80px;
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
-  border-radius: 16px;
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #dc2626 100%);
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 16px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  margin: 0 auto 20px;
+  box-shadow: 
+    0 15px 30px rgba(220, 38, 38, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation: icon-pulse 2s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-icon::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: icon-shine 3s ease-in-out infinite;
+}
+
+@keyframes icon-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes icon-shine {
+  0% { left: -100%; }
+  50% { left: 100%; }
+  100% { left: 100%; }
 }
 
 .login-icon span {
-  font-size: 32px;
+  font-size: 40px;
+  z-index: 1;
+  position: relative;
 }
 
 .login-title {
-  font-size: 24px;
-  font-weight: bold;
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  font-size: 32px;
+  font-weight: 900;
+  background: linear-gradient(45deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #ff00ff);
+  background-size: 400% 400%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  margin-bottom: 8px;
+  animation: rainbow 3s ease-in-out infinite;
+  margin-bottom: 10px;
+  text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+}
+
+@keyframes rainbow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .login-subtitle {
-  color: #6b7280;
-  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 18px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  font-weight: 500;
 }
 
 .form-group {
-  margin-bottom: 24px;
+  margin-bottom: 25px;
 }
 
 .form-label {
   display: block;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
-  color: #374151;
-  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 10px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .form-input {
   width: 100%;
-  padding: 12px 16px;
-  color: #1f2937;
-  background: #f9fafb;
-  border: 1px solid #d1d5db;
-  border-radius: 12px;
+  padding: 15px 20px;
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
   outline: none;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  font-size: 16px;
   position: relative;
 }
 
-.form-input:focus {
-  ring: 2px solid #3b82f6;
-  border-color: transparent;
+.form-input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
 }
 
-.form-input::placeholder {
-  color: #9ca3af;
+.form-input:focus {
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
 }
 
 .login-button {
   width: 100%;
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  padding: 18px 30px;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 50%, #dc2626 100%);
   color: white;
-  font-weight: 600;
-  border-radius: 12px;
+  font-weight: 700;
+  font-size: 18px;
+  border-radius: 15px;
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 25px rgba(220, 38, 38, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.login-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.login-button:hover::before {
+  left: 100%;
 }
 
 .login-button:hover {
-  background: linear-gradient(135deg, #1d4ed8 0%, #6b46c1 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 15px 30px rgba(220, 38, 38, 0.4);
+}
+
+.login-button:active {
+  transform: translateY(-1px);
 }
 
 .login-button:disabled {
@@ -124,16 +236,191 @@
 }
 
 .login-footer {
-  margin-top: 32px;
+  margin-top: 30px;
   text-align: center;
 }
 
 .login-footer p {
-  font-size: 12px;
-  color: #6b7280;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-/* Elementos decorativos */
+/* Efectos de nieve mejorados */
+.snowflake {
+  position: fixed;
+  top: -10px;
+  z-index: 2;
+  user-select: none;
+  cursor: default;
+  animation-name: snowflakes-fall, snowflakes-shake;
+  animation-duration: 10s, 3s;
+  animation-timing-function: linear, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+  animation-play-state: running, running;
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+  font-size: 20px;
+}
+
+@keyframes snowflakes-fall {
+  to {
+    transform: translateY(100vh);
+  }
+}
+
+@keyframes snowflakes-shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(80px);
+  }
+}
+
+/* Efectos de luces navideñas */
+.christmas-lights {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 30px;
+  background: linear-gradient(90deg, 
+    #ff0000 0%, #ff8000 14%, #ffff00 28%, #80ff00 42%, 
+    #00ff00 56%, #00ff80 70%, #00ffff 84%, #ff00ff 100%);
+  z-index: 3;
+  animation: lights 2s linear infinite;
+  background-size: 200% 100%;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes lights {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* Árbol de navidad decorativo */
+.christmas-tree {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 80px;
+  height: 100px;
+  z-index: 2;
+  opacity: 0.7;
+}
+
+.christmas-tree::before {
+  content: '🎄';
+  font-size: 80px;
+  animation: tree-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes tree-glow {
+  from { filter: drop-shadow(0 0 5px rgba(0, 255, 0, 0.5)); }
+  to { filter: drop-shadow(0 0 20px rgba(0, 255, 0, 0.8)); }
+}
+
+/* Regalos decorativos */
+.gift-box {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 2;
+  opacity: 0.7;
+}
+
+.gift-box::before {
+  content: '🎁';
+  font-size: 60px;
+  animation: gift-bounce 3s ease-in-out infinite;
+}
+
+@keyframes gift-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Campanas navideñas */
+.bells {
+  position: fixed;
+  top: 50%;
+  left: 20px;
+  z-index: 2;
+  opacity: 0.6;
+}
+
+.bells::before {
+  content: '🔔';
+  font-size: 50px;
+  animation: bell-swing 2s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+@keyframes bell-swing {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(10deg); }
+}
+
+/* Muñeco de nieve */
+.snowman {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 2;
+  opacity: 0.8;
+}
+
+.snowman::before {
+  content: '⛄';
+  font-size: 60px;
+  animation: snowman-wiggle 4s ease-in-out infinite;
+}
+
+@keyframes snowman-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(2deg); }
+  75% { transform: rotate(-2deg); }
+}
+
+/* Efecto de partículas */
+.particles {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  animation: particle-float 6s linear infinite;
+}
+
+@keyframes particle-float {
+  0% {
+    transform: translateY(100vh) translateX(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) translateX(100px);
+    opacity: 0;
+  }
+}
+
+/* Elementos decorativos flotantes */
 .decorative-element {
   position: absolute;
   border-radius: 50%;
@@ -146,7 +433,8 @@
   left: 40px;
   width: 16px;
   height: 16px;
-  background: rgba(59, 130, 246, 0.3);
+  background: rgba(220, 38, 38, 0.6);
+  box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
 }
 
 .decorative-element:nth-child(2) {
@@ -154,7 +442,8 @@
   right: 80px;
   width: 24px;
   height: 24px;
-  background: rgba(147, 51, 234, 0.3);
+  background: rgba(34, 197, 94, 0.6);
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
   animation-delay: 1s;
 }
 
@@ -163,7 +452,8 @@
   left: 80px;
   width: 12px;
   height: 12px;
-  background: rgba(236, 72, 153, 0.3);
+  background: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
   animation-delay: 2s;
 }
 
@@ -172,67 +462,11 @@
   right: 40px;
   width: 20px;
   height: 20px;
-  background: rgba(99, 102, 241, 0.3);
+  background: rgba(168, 85, 247, 0.6);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
   animation-delay: 0.5s;
 }
 
-/* Estilos personalizados para copos de nieve */
-.snowflake {
-  position: fixed;
-  top: -10px;
-  z-index: 10;
-  user-select: none;
-  cursor: default;
-  animation-name: snow;
-  animation-duration: 10s;
-  animation-iteration-count: infinite;
-  animation-timing-function: linear;
-  pointer-events: none;
-}
-
-/* Animación de copos de nieve mejorada */
-@keyframes snow {
-  0% {
-    transform: translateY(-100vh) rotate(0deg);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(100vh) rotate(360deg);
-    opacity: 0;
-  }
-}
-
-/* Animación de fade-in para imágenes */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Animación de slide-in desde abajo */
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Animación de pulse suave */
 @keyframes gentlePulse {
   0%, 100% {
     opacity: 0.6;
@@ -244,25 +478,34 @@
   }
 }
 
-/* Animación de bounce suave */
-@keyframes gentleBounce {
-  0%, 20%, 50%, 80%, 100% {
-    transform: translateY(0);
+/* Animaciones adicionales */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
   }
-  40% {
-    transform: translateY(-10px);
-  }
-  60% {
-    transform: translateY(-5px);
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
-/* Animación de spin para loading */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes spin {
-  0% {
+  from {
     transform: rotate(0deg);
   }
-  100% {
+  to {
     transform: rotate(360deg);
   }
 }
@@ -280,96 +523,34 @@
   animation: gentlePulse 2s ease-in-out infinite;
 }
 
-.animate-gentle-bounce {
-  animation: gentleBounce 2s ease-in-out infinite;
-}
-
-/* Estilos para gradientes personalizados */
-.gradient-text {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.gradient-bg {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-/* Estilos para glassmorphism */
-.glass {
-  background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-}
-
-/* Estilos para sombras personalizadas */
-.shadow-glow {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
-}
-
-.shadow-glow-purple {
-  box-shadow: 0 0 20px rgba(147, 51, 234, 0.3);
-}
-
-/* Estilos para hover effects */
-.hover-lift {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.hover-lift:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-}
-
-/* Estilos para botones con efectos */
-.btn-gradient {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  transition: all 0.3s ease;
-}
-
-.btn-gradient:hover {
-  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-}
-
-/* Estilos para cards con efectos 3D */
-.card-3d {
-  transform-style: preserve-3d;
-  transition: transform 0.3s ease;
-}
-
-.card-3d:hover {
-  transform: rotateY(5deg) rotateX(5deg);
-}
-
-/* Estilos para scrollbar personalizado */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-}
-
 /* Estilos para responsive design */
 @media (max-width: 768px) {
   .snowflake {
-    font-size: 12px;
+    font-size: 16px;
   }
   
-  .card-3d:hover {
-    transform: none;
+  .login-form {
+    padding: 30px 25px;
+    margin: 20px;
+  }
+  
+  .login-title {
+    font-size: 24px;
+  }
+  
+  .login-icon {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .login-icon span {
+    font-size: 32px;
+  }
+  
+  .christmas-tree::before,
+  .gift-box::before,
+  .bells::before,
+  .snowman::before {
+    font-size: 40px;
   }
 }

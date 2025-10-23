@@ -255,34 +255,34 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Header Moderno */}
-      <div className="bg-white/90 backdrop-blur-md shadow-lg border-b border-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Header Profesional */}
+      <div className="bg-gradient-to-r from-slate-800/95 via-slate-700/95 to-slate-800/95 backdrop-blur-xl shadow-2xl border-b border-slate-600/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <button 
                 onClick={onBack} 
-                className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200"
+                className="flex items-center space-x-2 px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl hover:from-slate-700 hover:to-slate-800 transition-all duration-300 shadow-lg hover:shadow-xl border border-slate-500/30 hover:border-slate-400/50"
               >
                 <span>←</span>
                 <span>Volver</span>
               </button>
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-red-400 bg-clip-text text-transparent tracking-tight">
                   Sección: {config.name}
                 </h1>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-slate-300 font-medium">
                   {alumnoNombre} - #{alumnoRef}
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-6">
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-800">
+                <p className="text-sm font-semibold text-white">
                   Asientos disponibles
                 </p>
-                <p className="text-lg font-bold text-blue-600">
+                <p className="text-2xl font-bold text-emerald-400">
                   {finalAvailableSeats}
                 </p>
               </div>
@@ -315,42 +315,44 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
             </div>
 
             {/* Mapa de asientos */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 lg:p-8 shadow-lg border border-gray-200">
-              <div className="text-center mb-6">
-                <h2 className={`text-2xl font-bold mb-2 ${
+            <div className="bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-xl rounded-3xl p-6 sm:p-8 lg:p-10 shadow-2xl border border-slate-200/50">
+              <div className="text-center mb-8">
+                <h2 className={`text-3xl font-bold mb-3 tracking-tight ${
                   config.color === 'oro' 
-                    ? 'bg-gradient-to-r from-yellow-400 to-yellow-600 bg-clip-text text-transparent' 
+                    ? 'bg-gradient-to-r from-amber-500 to-yellow-600 bg-clip-text text-transparent' 
                     : config.color === 'plata' 
-                    ? 'bg-gradient-to-r from-gray-400 to-gray-600 bg-clip-text text-transparent' 
-                    : 'bg-gradient-to-r from-amber-500 to-amber-700 bg-clip-text text-transparent'
+                    ? 'bg-gradient-to-r from-slate-500 to-slate-700 bg-clip-text text-transparent' 
+                    : 'bg-gradient-to-r from-orange-500 to-amber-700 bg-clip-text text-transparent'
                 }`}>
                   SECCIÓN: {config.name}
                 </h2>
-                <p className="text-gray-600">Selecciona tus asientos preferidos</p>
+                <p className="text-slate-600 text-lg">Selecciona tus asientos preferidos</p>
               </div>
               
               {/* Leyenda de asientos */}
-              <div className="flex justify-center mb-6">
-                <div className="flex flex-wrap gap-3 text-xs">
-                  <div className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded border border-yellow-500"></div>
-                    <span>Disponible</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-blue-500 rounded border border-blue-600"></div>
-                    <span>Seleccionado</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-red-500 rounded border border-red-600"></div>
-                    <span>Reservado</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-gray-800 rounded border border-gray-600"></div>
-                    <span>Pagado</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <div className="w-3 h-3 bg-gray-300 rounded border border-gray-400"></div>
-                    <span>No disponible</span>
+              <div className="flex justify-center mb-8">
+                <div className="bg-slate-100/80 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-slate-200/50">
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 bg-gradient-to-br from-amber-400 to-yellow-600 rounded border border-amber-500 shadow-sm"></div>
+                      <span className="font-medium text-slate-700">Disponible</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 bg-blue-500 rounded border border-blue-600 shadow-sm"></div>
+                      <span className="font-medium text-slate-700">Seleccionado</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 bg-red-500 rounded border border-red-600 shadow-sm"></div>
+                      <span className="font-medium text-slate-700">Reservado</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 bg-slate-800 rounded border border-slate-600 shadow-sm"></div>
+                      <span className="font-medium text-slate-700">Pagado</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 bg-slate-300 rounded border border-slate-400 shadow-sm"></div>
+                      <span className="font-medium text-slate-700">No disponible</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -363,33 +365,33 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
         </div>
 
         {/* Sidebar - Resumen de selección (responsive) */}
-        <div className="w-full lg:w-80 bg-white/95 backdrop-blur-md border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col">
+        <div className="w-full lg:w-80 bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-xl border-t lg:border-t-0 lg:border-l border-slate-200/50 flex flex-col shadow-2xl">
           <div className="p-4 sm:p-6 flex-1 flex flex-col">
             {selectedSeats.length > 0 ? (
               <div className="flex flex-col">
-                <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                  <span className="mr-2">🎫</span>
-                  Resumen de tu Selección
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-red-600 bg-clip-text text-transparent mb-6 flex items-center justify-center gap-3">
+                  <span className="text-3xl">🎫</span>
+                  <span>Resumen de tu Selección</span>
                 </h3>
                 
-                <div className="space-y-4 mb-6">
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 mb-2">Asientos seleccionados</p>
-                    <p className="text-lg font-semibold text-blue-800 break-words">
+                <div className="space-y-6 mb-8">
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-2xl p-6 shadow-lg border border-blue-200/50">
+                    <p className="text-sm text-slate-600 mb-3 font-medium">Asientos seleccionados</p>
+                    <p className="text-lg font-bold text-blue-800 break-words">
                       {selectedSeats.map(s => `${s.fila}${s.asiento}`).join(', ')}
                     </p>
                   </div>
                   
-                  <div className="bg-green-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 mb-1">Total a pagar</p>
-                    <p className="text-2xl font-bold text-green-800">
+                  <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-2xl p-6 shadow-lg border border-emerald-200/50">
+                    <p className="text-sm text-slate-600 mb-2 font-medium">Total a pagar</p>
+                    <p className="text-3xl font-bold text-emerald-800">
                       ${(selectedSeats.length * config.price).toFixed(2)}
                     </p>
                   </div>
                   
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 mb-1">Boletos disponibles</p>
-                    <p className="text-lg font-semibold text-gray-800">
+                  <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-2xl p-6 shadow-lg border border-slate-200/50">
+                    <p className="text-sm text-slate-600 mb-2 font-medium">Boletos disponibles</p>
+                    <p className="text-xl font-bold text-slate-800">
                       {finalAvailableSeats} restantes
                     </p>
                   </div>
@@ -398,7 +400,7 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
                 <button
                   onClick={handleConfirmReservation}
                   disabled={loading}
-                  className="w-full px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold rounded-lg hover:from-green-700 hover:to-green-800 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  className="w-full px-8 py-4 bg-gradient-to-r from-emerald-600 to-red-600 text-white font-bold rounded-2xl hover:from-emerald-700 hover:to-red-700 transform hover:scale-[1.02] transition-all duration-300 shadow-2xl hover:shadow-3xl border border-white/10 hover:border-white/20 text-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
                   {loading ? (
                     <span className="flex items-center justify-center space-x-2">
@@ -415,15 +417,15 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
               </div>
             ) : (
               <div className="flex flex-col h-full justify-center text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🎭</span>
+                <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg border border-slate-200/50">
+                  <span className="text-3xl">🎪</span>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">Selecciona tus asientos</h3>
-                <p className="text-gray-500 text-sm mb-6">Haz clic en los asientos disponibles para seleccionarlos</p>
+                <h3 className="text-xl font-bold text-slate-700 mb-3">Selecciona tus asientos</h3>
+                <p className="text-slate-500 text-sm mb-8 leading-relaxed">Haz clic en los asientos disponibles para seleccionarlos</p>
                 
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-600 mb-1">Boletos disponibles</p>
-                  <p className="text-lg font-semibold text-gray-800">
+                <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-2xl p-6 shadow-lg border border-slate-200/50">
+                  <p className="text-sm text-slate-600 mb-2 font-medium">Boletos disponibles</p>
+                  <p className="text-2xl font-bold text-slate-800">
                     {finalAvailableSeats} restantes
                   </p>
                 </div>

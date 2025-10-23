@@ -39,6 +39,14 @@ export const Dashboard: React.FC = () => {
   
   const hermanos = userData.hermanos;
   const alumnoRef = userData.alumnoRef;
+  
+  // Debug: Log de datos recibidos
+  console.log('🔍 Dashboard Debug - userData:', userData);
+  console.log('👥 Dashboard Debug - hermanos:', hermanos);
+  console.log('📏 Dashboard Debug - hermanos.length:', hermanos.length);
+  hermanos.forEach((hermano: HermanosData, index: number) => {
+    console.log(`  ${index + 1}. ${hermano.nombre} (Control: ${hermano.control})`);
+  });
 
   // Función para eliminar un asiento individual
   const eliminarAsientoIndividual = async (asiento: AsientoComprobante) => {
@@ -211,32 +219,32 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {/* Header Moderno */}
-      <nav className="bg-white/90 backdrop-blur-md shadow-lg border-b border-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Header Profesional */}
+      <nav className="bg-gradient-to-r from-slate-800/95 via-slate-700/95 to-slate-800/95 backdrop-blur-xl shadow-2xl border-b border-slate-600/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">🎫</span>
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-red-500 rounded-xl flex items-center justify-center shadow-xl border border-white/10">
+                <span className="text-white font-bold text-xl">🎄</span>
               </div>
           <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-red-400 bg-clip-text text-transparent tracking-tight">
                   Festival Navideño
                 </h1>
-                <p className="text-sm text-gray-500">Portal de Reservas</p>
+                <p className="text-sm text-slate-300 font-medium">Portal de Reservas 2024</p>
               </div>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-6">
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-800">
+                <p className="text-sm font-semibold text-white">
                   {hermanos.find(h => h.control === alumnoRef)?.nombre || 'Usuario'}
                 </p>
-                <p className="text-xs text-gray-500">#{alumnoRef}</p>
+                <p className="text-xs text-slate-400 font-mono">#{alumnoRef}</p>
               </div>
             <button
               onClick={logout}
-                className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-sm hover:shadow-md"
+                className="px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl hover:from-slate-700 hover:to-slate-800 transition-all duration-300 shadow-lg hover:shadow-xl border border-slate-500/30 hover:border-slate-400/50"
             >
                 Cerrar Sesión
             </button>
@@ -247,11 +255,11 @@ export const Dashboard: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">
-            ¡Bienvenido al <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Festival Navideño!</span>
+        <div className="text-center mb-16">
+          <h2 className="text-5xl font-bold text-white mb-6 tracking-tight">
+            ¡Bienvenido al <span className="bg-gradient-to-r from-emerald-400 to-red-400 bg-clip-text text-transparent">Festival Navideño!</span>
           </h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
             Selecciona tu sección preferida y reserva tus boletos para una experiencia inolvidable
           </p>
         </div>
@@ -260,139 +268,155 @@ export const Dashboard: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {/* Sección Oro */}
           <div 
-            className="group relative bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-2xl p-6 cursor-pointer transform hover:scale-105 hover:shadow-2xl transition-all duration-300"
+            className="group relative bg-gradient-to-br from-amber-500 via-yellow-500 to-amber-600 rounded-3xl p-8 cursor-pointer transform hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border border-amber-400/20 hover:border-amber-300/40"
             onClick={() => {
               if (validateDates()) {
                 setSelectedSection(1);
               }
             }}
           >
-            <div className="absolute inset-0 bg-black/10 rounded-2xl group-hover:bg-black/20 transition-all duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-400/10 to-yellow-600/10 rounded-3xl group-hover:from-amber-300/20 group-hover:to-yellow-500/20 transition-all duration-500"></div>
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <span className="text-2xl">👑</span>
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center shadow-xl border border-white/10">
+                  <span className="text-3xl">👑</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-white/80 text-sm">Desde</p>
-                  <p className="text-white font-bold text-2xl">$180</p>
+                  <p className="text-white/80 text-xs font-medium uppercase tracking-wide">Desde</p>
+                  <p className="text-white font-bold text-3xl">$180</p>
                 </div>
               </div>
-              <h3 className="text-white font-bold text-xl mb-2">ZONA ORO</h3>
-              <p className="text-white/90 text-sm">Vista premium del escenario</p>
-              <div className="mt-4 flex items-center text-white/80 text-sm">
-                <span className="w-2 h-2 bg-white/60 rounded-full mr-2"></span>
-                Disponible
+              <h3 className="text-white font-bold text-2xl mb-3 tracking-tight">ZONA ORO</h3>
+              <p className="text-white/90 text-sm leading-relaxed mb-6">Vista premium del escenario con comodidades exclusivas</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center text-white/90 text-sm">
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full mr-2"></span>
+                  Disponible
+                </div>
+                <div className="text-white/60 text-xs font-medium">Premium</div>
               </div>
             </div>
           </div>
 
           {/* Sección Plata */}
           <div 
-            className="group relative bg-gradient-to-br from-gray-400 via-gray-500 to-gray-600 rounded-2xl p-6 cursor-pointer transform hover:scale-105 hover:shadow-2xl transition-all duration-300"
+            className="group relative bg-gradient-to-br from-slate-500 via-slate-600 to-slate-700 rounded-3xl p-8 cursor-pointer transform hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border border-slate-400/20 hover:border-slate-300/40"
             onClick={() => {
               if (validateDates()) {
                 setSelectedSection(2);
               }
             }}
           >
-            <div className="absolute inset-0 bg-black/10 rounded-2xl group-hover:bg-black/20 transition-all duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-400/10 to-slate-700/10 rounded-3xl group-hover:from-slate-300/20 group-hover:to-slate-600/20 transition-all duration-500"></div>
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <span className="text-2xl">🥈</span>
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center shadow-xl border border-white/10">
+                  <span className="text-3xl">🥈</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-white/80 text-sm">Desde</p>
-                  <p className="text-white font-bold text-2xl">$160</p>
+                  <p className="text-white/80 text-xs font-medium uppercase tracking-wide">Desde</p>
+                  <p className="text-white font-bold text-3xl">$160</p>
                 </div>
               </div>
-              <h3 className="text-white font-bold text-xl mb-2">ZONA PLATA</h3>
-              <p className="text-white/90 text-sm">Excelente vista y comodidad</p>
-              <div className="mt-4 flex items-center text-white/80 text-sm">
-                <span className="w-2 h-2 bg-white/60 rounded-full mr-2"></span>
-                Disponible
+              <h3 className="text-white font-bold text-2xl mb-3 tracking-tight">ZONA PLATA</h3>
+              <p className="text-white/90 text-sm leading-relaxed mb-6">Excelente vista y comodidad para toda la familia</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center text-white/90 text-sm">
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full mr-2"></span>
+                  Disponible
+                </div>
+                <div className="text-white/60 text-xs font-medium">Estándar</div>
               </div>
             </div>
           </div>
 
           {/* Sección Bronce Palcos */}
           <div 
-            className="group relative bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 rounded-2xl p-6 cursor-pointer transform hover:scale-105 hover:shadow-2xl transition-all duration-300"
+            className="group relative bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-3xl p-8 cursor-pointer transform hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border border-orange-400/20 hover:border-orange-300/40"
             onClick={() => {
               if (validateDates()) {
                 setSelectedSection(3);
               }
             }}
           >
-            <div className="absolute inset-0 bg-black/10 rounded-2xl group-hover:bg-black/20 transition-all duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-400/10 to-red-600/10 rounded-3xl group-hover:from-orange-300/20 group-hover:to-red-500/20 transition-all duration-500"></div>
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <span className="text-2xl">🏛️</span>
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center shadow-xl border border-white/10">
+                  <span className="text-3xl">🏛️</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-white/80 text-sm">Desde</p>
-                  <p className="text-white font-bold text-2xl">$120</p>
+                  <p className="text-white/80 text-xs font-medium uppercase tracking-wide">Desde</p>
+                  <p className="text-white font-bold text-3xl">$120</p>
                 </div>
               </div>
-              <h3 className="text-white font-bold text-xl mb-2">BRONCE PALCOS</h3>
-              <p className="text-white/90 text-sm">Vista lateral privilegiada</p>
-              <div className="mt-4 flex items-center text-white/80 text-sm">
-                <span className="w-2 h-2 bg-white/60 rounded-full mr-2"></span>
-                Disponible
+              <h3 className="text-white font-bold text-2xl mb-3 tracking-tight">BRONCE PALCOS</h3>
+              <p className="text-white/90 text-sm leading-relaxed mb-6">Vista lateral privilegiada con ambiente íntimo</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center text-white/90 text-sm">
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full mr-2"></span>
+                  Disponible
+                </div>
+                <div className="text-white/60 text-xs font-medium">Económico</div>
               </div>
             </div>
           </div>
 
           {/* Sección Bronce Balcón */}
           <div 
-            className="group relative bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 rounded-2xl p-6 cursor-pointer transform hover:scale-105 hover:shadow-2xl transition-all duration-300"
+            className="group relative bg-gradient-to-br from-amber-600 via-amber-700 to-yellow-700 rounded-3xl p-8 cursor-pointer transform hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border border-amber-400/20 hover:border-amber-300/40"
             onClick={() => {
               if (validateDates()) {
                 setSelectedSection(4);
               }
             }}
           >
-            <div className="absolute inset-0 bg-black/10 rounded-2xl group-hover:bg-black/20 transition-all duration-300"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-400/10 to-yellow-700/10 rounded-3xl group-hover:from-amber-300/20 group-hover:to-yellow-600/20 transition-all duration-500"></div>
             <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                  <span className="text-2xl">🏛️</span>
+              <div className="flex items-center justify-between mb-6">
+                <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center shadow-xl border border-white/10">
+                  <span className="text-3xl">🏛️</span>
                 </div>
                 <div className="text-right">
-                  <p className="text-white/80 text-sm">Desde</p>
-                  <p className="text-white font-bold text-2xl">$120</p>
+                  <p className="text-white/80 text-xs font-medium uppercase tracking-wide">Desde</p>
+                  <p className="text-white font-bold text-3xl">$120</p>
                 </div>
               </div>
-              <h3 className="text-white font-bold text-xl mb-2">BRONCE BALCÓN</h3>
-              <p className="text-white/90 text-sm">Vista elevada panorámica</p>
-              <div className="mt-4 flex items-center text-white/80 text-sm">
-                <span className="w-2 h-2 bg-white/60 rounded-full mr-2"></span>
-                Disponible
+              <h3 className="text-white font-bold text-2xl mb-3 tracking-tight">BRONCE BALCÓN</h3>
+              <p className="text-white/90 text-sm leading-relaxed mb-6">Vista elevada panorámica con perspectiva única</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center text-white/90 text-sm">
+                  <span className="w-2 h-2 bg-emerald-400 rounded-full mr-2"></span>
+                  Disponible
+                </div>
+                <div className="text-white/60 text-xs font-medium">Económico</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Botón Ver Mis Boletos */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-16">
           <button 
             onClick={verMisBoletos}
-            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-purple-700 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+            className="px-12 py-4 bg-gradient-to-r from-emerald-600 to-red-600 text-white font-bold rounded-2xl hover:from-emerald-700 hover:to-red-700 transform hover:scale-[1.02] transition-all duration-300 shadow-2xl hover:shadow-3xl border border-white/10 hover:border-white/20 text-lg"
           >
-            <span className="flex items-center space-x-2">
+            <span className="flex items-center space-x-3">
               <span>🎫</span>
               <span>Ver Mis Boletos</span>
+              <span>🎁</span>
             </span>
           </button>
         </div>
 
         {/* Información de Alumnos */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-gray-200 mb-12">
-          <div className="text-center mb-6">
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">👨‍👩‍👧‍👦 Tu Familia</h3>
-            <p className="text-gray-600">Información de alumnos y hermanos registrados</p>
+        <div className="bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-xl rounded-3xl p-10 shadow-2xl border border-slate-200/50 mb-16">
+          <div className="text-center mb-8">
+            <h3 className="text-3xl font-bold mb-3 tracking-tight flex items-center justify-center gap-3">
+              <span className="text-4xl">👥</span>
+              <span className="bg-gradient-to-r from-emerald-600 to-red-600 bg-clip-text text-transparent">Tu Familia</span>
+            </h3>
+            <p className="text-slate-600 text-lg">Información de alumnos y hermanos registrados</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {renderAlumnosInfo()}
@@ -400,10 +424,13 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Escenario Preview */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-lg border border-gray-200">
-          <div className="text-center mb-6">
-            <h3 className="text-2xl font-bold text-gray-800 mb-2">🎭 Nuestro Escenario</h3>
-            <p className="text-gray-600">Prepárate para una experiencia mágica</p>
+        <div className="bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-xl rounded-3xl p-10 shadow-2xl border border-slate-200/50">
+          <div className="text-center mb-8">
+            <h3 className="text-3xl font-bold mb-3 tracking-tight flex items-center justify-center gap-3">
+              <span className="text-4xl">🎪</span>
+              <span className="bg-gradient-to-r from-emerald-600 to-red-600 bg-clip-text text-transparent">Nuestro Escenario</span>
+            </h3>
+            <p className="text-slate-600 text-lg">Prepárate para una experiencia mágica navideña</p>
           </div>
           <div className="relative overflow-hidden rounded-xl">
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent z-10"></div>

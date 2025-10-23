@@ -77,19 +77,19 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
-    // Obtener hermanos (simplificado)
-    const { data: hermanos } = await supabase
-      .from('alumno_familiar')
-      .select('alumno_id')
-      .eq('alumno_id', alumno.alumno_id)
-      .limit(10);
-
-    const hermanosData = hermanos?.map(() => ({
-      control: alumno.alumno_ref,
-      nombre: `${alumno.alumno_app} ${alumno.alumno_apm} ${alumno.alumno_nombre}`,
-      nivel: alumno.alumno_nivel,
-      grado: alumno.alumno_grado
-    })) || [];
+    // Obtener hermanos usando AuthModel
+    const { AuthModel } = await import('@/lib/models/AuthModel');
+    const authModel = new AuthModel();
+    const authResult = await authModel.authenticate(parseInt(alumno_ref), clave);
+    
+    if (!authResult.success) {
+      return NextResponse.json({
+        success: false,
+        message: authResult.message || 'Error en autenticación'
+      }, { status: 401 });
+    }
+    
+    const hermanosData = authResult.data || [];
 
     console.log('✅ Login exitoso');
     return NextResponse.json({

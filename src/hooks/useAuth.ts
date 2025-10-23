@@ -16,6 +16,12 @@ export const useAuth = () => {
     if (storedData) {
       try {
         const parsedData = JSON.parse(storedData);
+        
+        // Debug: Log de datos cargados desde localStorage
+        console.log('🔍 useAuth Debug - Datos cargados desde localStorage:', parsedData);
+        console.log('👥 useAuth Debug - hermanos cargados:', parsedData.hermanos);
+        console.log('📏 useAuth Debug - hermanos.length:', parsedData.hermanos?.length);
+        
         setUserData(parsedData);
         setIsAuthenticated(true);
       } catch (error) {
@@ -47,6 +53,12 @@ export const useAuth = () => {
           alumnoNombre: '', // Se puede obtener del nombre completo más adelante
           hermanos: result.data,
         };
+
+        // Debug: Log de datos que se van a guardar
+        console.log('🔍 useAuth Debug - result.data:', result.data);
+        console.log('📏 useAuth Debug - result.data.length:', result.data.length);
+        console.log('💾 useAuth Debug - newUserData:', newUserData);
+        console.log('👥 useAuth Debug - hermanos que se guardarán:', newUserData.hermanos);
 
         localStorage.setItem('userData', JSON.stringify(newUserData));
         
