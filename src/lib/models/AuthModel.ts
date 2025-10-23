@@ -48,14 +48,19 @@ export class AuthModel {
 
       // Obtener hermanos (incluyendo al alumno actual)
       const hermanosData = await this.getHermanos(alumno.alumno_id);
+      console.log('🔍 AuthModel - hermanos obtenidos de getHermanos:', hermanosData);
       
       // Agregar al alumno actual a la lista de hermanos
-      hermanosData.unshift({
+      const alumnoActual = {
         control: alumno.alumno_ref,
         nombre: `${alumno.alumno_app} ${alumno.alumno_apm} ${alumno.alumno_nombre}`,
         nivel: alumno.alumno_nivel,
         grado: alumno.alumno_grado
-      });
+      };
+      console.log('🔍 AuthModel - alumno actual a agregar:', alumnoActual);
+      
+      hermanosData.unshift(alumnoActual);
+      console.log('🔍 AuthModel - lista final de hermanos:', hermanosData);
       
       // Imprimir información del alumno en consola
       console.log('\n🎓 ===== INFORMACIÓN DEL ALUMNO =====');
@@ -229,6 +234,7 @@ export class AuthModel {
 
       // Obtener datos de hermanos con una sola consulta
       if (allIds.size > 0) {
+        console.log('🔍 getHermanos - IDs encontrados:', Array.from(allIds));
         const { data: hermanos } = await supabase
           .from('alumno')
           .select('alumno_id, alumno_ref, alumno_app, alumno_apm, alumno_nombre, alumno_nivel, alumno_grado')
@@ -236,14 +242,17 @@ export class AuthModel {
           .eq('alumno_ciclo_escolar', 22)
           .neq('alumno_id', alumnoId); // Excluir al alumno actual
 
+        console.log('🔍 getHermanos - datos de hermanos obtenidos:', hermanos);
         if (hermanos) {
           hermanos.forEach(hermano => {
-            hermanosData.push({
+            const hermanoData = {
               control: hermano.alumno_ref,
               nombre: `${hermano.alumno_app} ${hermano.alumno_apm} ${hermano.alumno_nombre}`,
               nivel: hermano.alumno_nivel,
               grado: hermano.alumno_grado
-            });
+            };
+            console.log('🔍 getHermanos - agregando hermano:', hermanoData);
+            hermanosData.push(hermanoData);
           });
         }
       }

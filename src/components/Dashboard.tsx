@@ -84,6 +84,24 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  // Función para debug de hermanos
+  const debugHermanos = async () => {
+    try {
+      const response = await fetch(`/api/debug/hermanos?alumno_ref=${alumnoRef}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('🔍 DEBUG HERMANOS - Resultado completo:', result.data);
+        alert(`Debug completado. Revisa la consola para ver los detalles.\nTotal hermanos: ${result.data.totalHermanos}`);
+      } else {
+        alert('Error en debug: ' + result.message);
+      }
+    } catch (error) {
+      console.error('Error en debug hermanos:', error);
+      alert('Error al hacer debug de hermanos');
+    }
+  };
+
   // Función para obtener reservas y mostrar comprobante
   const verMisBoletos = async () => {
     try {
@@ -161,9 +179,12 @@ export const Dashboard: React.FC = () => {
   };
 
   const renderAlumnosInfo = () => {
-    return hermanos
-      .filter(hermano => hermano.control !== 22222 && hermano.control !== 33333 && hermano.control !== 44444)
-      .map((hermano: HermanosData, index: number) => {
+    console.log('🔍 renderAlumnosInfo - hermanos originales:', hermanos);
+    const hermanosFiltrados = hermanos.filter(hermano => hermano.control !== 22222 && hermano.control !== 33333 && hermano.control !== 44444);
+    console.log('🔍 renderAlumnosInfo - hermanos filtrados:', hermanosFiltrados);
+    
+    return hermanosFiltrados.map((hermano: HermanosData, index: number) => {
+      console.log(`🔍 renderAlumnosInfo - Procesando hermano ${index}:`, hermano);
         let aluNivel = "";
         let nivel = hermano.nivel;
         const grado = hermano.grado;
@@ -396,7 +417,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Botón Ver Mis Boletos */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-8">
           <button 
             onClick={verMisBoletos}
             className="px-12 py-4 bg-gradient-to-r from-emerald-600 to-red-600 text-white font-bold rounded-2xl hover:from-emerald-700 hover:to-red-700 transform hover:scale-[1.02] transition-all duration-300 shadow-2xl hover:shadow-3xl border border-white/10 hover:border-white/20 text-lg"
@@ -405,6 +426,19 @@ export const Dashboard: React.FC = () => {
               <span>🎫</span>
               <span>Ver Mis Boletos</span>
               <span>🎁</span>
+            </span>
+          </button>
+        </div>
+
+        {/* Botón Debug Hermanos (temporal) */}
+        <div className="text-center mb-16">
+          <button 
+            onClick={debugHermanos}
+            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-purple-700 transform hover:scale-[1.02] transition-all duration-300 shadow-lg hover:shadow-xl border border-white/10 hover:border-white/20 text-sm"
+          >
+            <span className="flex items-center space-x-2">
+              <span>🔍</span>
+              <span>Debug Hermanos</span>
             </span>
           </button>
         </div>
