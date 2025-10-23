@@ -108,7 +108,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Obtener datos de hermanos
-    let hermanosData = [];
+    let hermanosData: Array<{
+      control: number;
+      nombre: string;
+      nivel: number;
+      grado: number;
+    }> = [];
     if (allIds.size > 0) {
       const { data: hermanos } = await supabase
         .from('alumno')
