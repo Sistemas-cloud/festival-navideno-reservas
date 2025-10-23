@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     // Verificar contraseña
     console.log('🔍 Verificando contraseña...');
-    const { data: detalle, error: detalleError } = await supabase
+    const { error: detalleError } = await supabase
       .from('alumno_detalles')
       .select('alumno_id, alumno_clave')
       .eq('alumno_id', alumno.alumno_id)
@@ -93,20 +93,16 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Contraseña verificada');
 
-    // Obtener hermanos (simplificado)
-    console.log('🔍 Obteniendo hermanos...');
-    const { data: hermanos, error: hermanosError } = await supabase
-      .from('alumno_familiar')
-      .select('alumno_id')
-      .eq('alumno_id', alumno.alumno_id)
-      .limit(10);
-
-    const hermanosData = hermanos?.map(h => ({
-      control: alumno.alumno_ref,
-      nombre: `${alumno.alumno_nombre}`,
-      nivel: alumno.alumno_nivel,
-      grado: alumno.alumno_grado
-    })) || [];
+    // Crear datos de hermanos para prueba
+    console.log('🔍 Creando datos de hermanos...');
+    const hermanosData = [
+      {
+        control: alumno.alumno_ref,
+        nombre: `${alumno.alumno_nombre}`,
+        nivel: alumno.alumno_nivel,
+        grado: alumno.alumno_grado
+      }
+    ];
 
     console.log('✅ Login simple exitoso');
 

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log('🔍 Probando conexión con Supabase...');
     
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     console.log('✅ Cliente de Supabase creado');
 
     // Probar una consulta simple
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('alumno')
       .select('count')
       .limit(1);

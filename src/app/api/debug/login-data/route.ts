@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       console.log('📏 Cantidad de hermanos:', Array.isArray(result.data) ? result.data.length : 'No es array');
       
       if (Array.isArray(result.data)) {
-        result.data.forEach((hermano: any, index: number) => {
+        result.data.forEach((hermano: { nombre: string; control: number }, index: number) => {
           console.log(`  ${index + 1}. ${hermano.nombre} (Control: ${hermano.control})`);
         });
       }

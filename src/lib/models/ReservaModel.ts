@@ -204,7 +204,7 @@ export class ReservaModel {
       for (const asiento of asientos) {
 
         // Verificar si el asiento ya existe
-        const { data: existing, error: checkError } = await supabase
+        const { data: existing } = await supabase
           .from('reservas')
           .select('id')
           .eq('fila', asiento.fila)
