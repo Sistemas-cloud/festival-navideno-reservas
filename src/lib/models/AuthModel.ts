@@ -46,8 +46,16 @@ export class AuthModel {
         return { success: false, message: 'Contraseña incorrecta.' };
       }
 
-      // Obtener hermanos
+      // Obtener hermanos (incluyendo al alumno actual)
       const hermanosData = await this.getHermanos(alumno.alumno_id);
+      
+      // Agregar al alumno actual a la lista de hermanos
+      hermanosData.unshift({
+        control: alumno.alumno_ref,
+        nombre: `${alumno.alumno_app} ${alumno.alumno_apm} ${alumno.alumno_nombre}`,
+        nivel: alumno.alumno_nivel,
+        grado: alumno.alumno_grado
+      });
       
       // Imprimir información del alumno en consola
       console.log('\n🎓 ===== INFORMACIÓN DEL ALUMNO =====');
