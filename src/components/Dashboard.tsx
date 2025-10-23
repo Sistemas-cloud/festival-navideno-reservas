@@ -180,10 +180,25 @@ export const Dashboard: React.FC = () => {
 
   const renderAlumnosInfo = () => {
     console.log('🔍 renderAlumnosInfo - hermanos originales:', hermanos);
+    console.log('🔍 renderAlumnosInfo - hermanos originales length:', hermanos.length);
+    
     const hermanosFiltrados = hermanos.filter(hermano => hermano.control !== 22222 && hermano.control !== 33333 && hermano.control !== 44444);
     console.log('🔍 renderAlumnosInfo - hermanos filtrados:', hermanosFiltrados);
+    console.log('🔍 renderAlumnosInfo - hermanos filtrados length:', hermanosFiltrados.length);
     
-    return hermanosFiltrados.map((hermano: HermanosData, index: number) => {
+    // Verificar si hay duplicados por control
+    const controlesUnicos = new Set(hermanosFiltrados.map(h => h.control));
+    console.log('🔍 renderAlumnosInfo - controles únicos:', Array.from(controlesUnicos));
+    console.log('🔍 renderAlumnosInfo - hay duplicados?', controlesUnicos.size !== hermanosFiltrados.length);
+    
+    // Eliminar duplicados por control
+    const hermanosSinDuplicados = hermanosFiltrados.filter((hermano, index, self) => 
+      index === self.findIndex(h => h.control === hermano.control)
+    );
+    console.log('🔍 renderAlumnosInfo - hermanos sin duplicados:', hermanosSinDuplicados);
+    console.log('🔍 renderAlumnosInfo - hermanos sin duplicados length:', hermanosSinDuplicados.length);
+    
+    return hermanosSinDuplicados.map((hermano: HermanosData, index: number) => {
       console.log(`🔍 renderAlumnosInfo - Procesando hermano ${index}:`, hermano);
         let aluNivel = "";
         let nivel = hermano.nivel;
@@ -212,7 +227,7 @@ export const Dashboard: React.FC = () => {
         }
 
         return (
-          <div key={index} className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-4 mb-3 shadow-sm hover:shadow-md transition-all duration-300">
+          <div key={`hermano-${hermano.control}`} className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-4 mb-3 shadow-sm hover:shadow-md transition-all duration-300">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
                 {hermano.control.toString().slice(-2)}
