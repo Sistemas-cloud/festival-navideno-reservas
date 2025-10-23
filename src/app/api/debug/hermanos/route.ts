@@ -154,7 +154,15 @@ export async function GET(request: NextRequest) {
         },
         idsEncontrados: Array.from(allIds),
         hermanos: hermanosData,
-        totalHermanos: hermanosData.length
+        totalHermanos: hermanosData.length,
+        debug: {
+          alumnoId: alumno.alumno_id,
+          alumnoRef: alumno.alumno_ref,
+          hermanosAntesDeAgregarAlumno: hermanosData.length - 1,
+          hermanosDespuesDeAgregarAlumno: hermanosData.length,
+          controlesUnicos: [...new Set(hermanosData.map(h => h.control))],
+          hayDuplicados: new Set(hermanosData.map(h => h.control)).size !== hermanosData.length
+        }
       }
     });
 

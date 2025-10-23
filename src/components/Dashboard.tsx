@@ -44,8 +44,10 @@ export const Dashboard: React.FC = () => {
   console.log('🔍 Dashboard Debug - userData:', userData);
   console.log('👥 Dashboard Debug - hermanos:', hermanos);
   console.log('📏 Dashboard Debug - hermanos.length:', hermanos.length);
+  console.log('🔍 Dashboard Debug - alumnoRef actual:', alumnoRef);
+  
   hermanos.forEach((hermano: HermanosData, index: number) => {
-    console.log(`  ${index + 1}. ${hermano.nombre} (Control: ${hermano.control})`);
+    console.log(`  ${index + 1}. ${hermano.nombre} (Control: ${hermano.control}) - Es el alumno actual? ${hermano.control === alumnoRef}`);
   });
 
   // Función para eliminar un asiento individual
@@ -191,10 +193,15 @@ export const Dashboard: React.FC = () => {
     console.log('🔍 renderAlumnosInfo - controles únicos:', Array.from(controlesUnicos));
     console.log('🔍 renderAlumnosInfo - hay duplicados?', controlesUnicos.size !== hermanosFiltrados.length);
     
-    // Eliminar duplicados por control
-    const hermanosSinDuplicados = hermanosFiltrados.filter((hermano, index, self) => 
-      index === self.findIndex(h => h.control === hermano.control)
-    );
+    // Eliminar duplicados por control (mantener solo la primera ocurrencia)
+    const hermanosSinDuplicados = hermanosFiltrados.filter((hermano, index, self) => {
+      const firstIndex = self.findIndex(h => h.control === hermano.control);
+      const isDuplicate = index !== firstIndex;
+      if (isDuplicate) {
+        console.log(`🔍 renderAlumnosInfo - DUPLICADO DETECTADO: ${hermano.nombre} (Control: ${hermano.control}) - Index: ${index}, FirstIndex: ${firstIndex}`);
+      }
+      return index === firstIndex;
+    });
     console.log('🔍 renderAlumnosInfo - hermanos sin duplicados:', hermanosSinDuplicados);
     console.log('🔍 renderAlumnosInfo - hermanos sin duplicados length:', hermanosSinDuplicados.length);
     
