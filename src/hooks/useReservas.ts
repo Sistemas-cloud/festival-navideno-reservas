@@ -64,7 +64,8 @@ export const useReservas = (alumnoRef: number) => {
     asientos: Asiento[],
     hermanosData: unknown[],
     precio: number,
-    zona: string
+    zona: string,
+    fechaPago?: string | null
   ): Promise<boolean> => {
     setLoading(true);
     try {
@@ -79,6 +80,7 @@ export const useReservas = (alumnoRef: number) => {
           hermanos_data: hermanosData,
           precio,
           zona,
+          fecha_pago: fechaPago,
         }),
       });
 

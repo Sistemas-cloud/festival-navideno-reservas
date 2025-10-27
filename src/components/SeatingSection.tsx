@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useReservas } from '@/hooks/useReservas';
 import { Asiento, SectionConfig } from '@/types';
+import { PaymentDateModal } from './PaymentDateModal';
 
 interface SeatingSectionProps {
   section: number;
@@ -83,7 +84,7 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
   }, [section]);
 
   const today = new Date();
-  const targetAsientos = new Date("2024-12-06");
+  const targetAsientos = new Date("2025-12-06");
   const finalAvailableSeats = today >= targetAsientos ? availableSeats + 5 : availableSeats;
 
   const isSeatDisabled = (row: string, seat: number): boolean => {
@@ -149,15 +150,26 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
     return classes;
   };
 
+  // Estados para el modal de fecha de pago
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
   const handleConfirmReservation = async () => {
     if (selectedSeats.length === 0) {
       alert('No has seleccionado ningún asiento.');
       return;
     }
 
+    // Mostrar modal de fecha de pago en lugar de confirmar directamente
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentDateConfirm = async (selectedDate: string) => {
+    setShowPaymentModal(false);
+
     if (confirm(`¿Confirma la reserva de boletos en esta sección? No habrá cambios en los asientos que hayas reservado.`)) {
       const hermanosData = JSON.parse(localStorage.getItem('userData') || '[]');
-      const success = await crearReserva(selectedSeats, hermanosData.hermanos, config.price, config.name);
+      
+      const success = await crearReserva(selectedSeats, hermanosData.hermanos, config.price, config.name, selectedDate);
       
       if (success) {
         setSelectedSeats([]);
@@ -449,6 +461,20 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
           ❄
         </div>
       ))}
+
+      {/* Modal de selección de fecha de pago */}
+      <PaymentDateModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        onConfirm={handlePaymentDateConfirm}
+        nivel={(() => {
+          interface Hermano { control: number; nivel: number; }
+          const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+          const alumnoActual = (userData.hermanos as Hermano[])?.find((h) => h.control === alumnoRef);
+          return alumnoActual?.nivel || 1;
+        })()}
+        familiaNumber={alumnoRef % 100}
+      />
     </div>
   );
 };

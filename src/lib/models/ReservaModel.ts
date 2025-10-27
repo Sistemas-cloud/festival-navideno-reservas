@@ -137,7 +137,8 @@ export class ReservaModel {
     alumnoRef: number, 
     _hermanosData: unknown[], 
     precio: number, 
-    zona: string
+    zona: string,
+    fechaPago?: string | null
   ): Promise<{success: boolean, message?: string}> {
     try {
       const supabase = getSupabaseClient();
@@ -192,13 +193,8 @@ export class ReservaModel {
 
       console.log(`✅ Validación de duplicidad exitosa para ${asientos.length} asientos del alumno ${alumnoRef}`);
       
-      // Calcular fecha límite (mañana o 2024-12-09, lo que sea mayor)
-      const fechaActual = new Date();
-      const fechaLimite = new Date(fechaActual.getTime() + 24 * 60 * 60 * 1000); // +1 día
-      const fechaMinima = new Date('2024-12-09');
-      const fechaFinal = fechaLimite > fechaMinima ? fechaLimite : fechaMinima;
-      
-      const fechaFormateada = fechaFinal.toISOString().split('T')[0];
+      // Usar la fecha de pago proporcionada o calcular una por defecto
+      const fechaFormateada = fechaPago || this.calcularFechaPagoDefecto();
 
       // Crear las reservas (ya validadas previamente)
       for (const asiento of asientos) {
@@ -424,11 +420,23 @@ export class ReservaModel {
       let nivel = alumno.alumno_nivel;
       const grado = alumno.alumno_grado;
 
-      // Reglas especiales
-      if (grado === 5 || grado === 6) {
-        nivel = 4;
-      } else if (nivel === 1) {
+      // Reglas especiales: 1° de primaria comparte función con Kinder, 6° comparte con Secundaria
+      if (nivel === 1) {
+        // Kinder va a 1ra Función (nivel 2 para el sistema de cierres)
         nivel = 2;
+      } else if (nivel === 2) {
+        // Primaria: 1° y resto a 1ra Función, 6° a 3ra Función
+        if (grado === 1) {
+          nivel = 2; // 1° comparte función con Kinder
+        } else if (grado === 6) {
+          nivel = 4; // 6° comparte función con Secundaria
+        } else {
+          nivel = 2; // Resto de primaria a 1ra Función
+        }
+      } else if (nivel === 3) {
+        nivel = 3; // Secundaria a 2da Función
+      } else if (nivel === 4) {
+        nivel = 4; // Preparatoria a 3ra Función
       }
 
       // Casos especiales para alumnos de prueba
@@ -446,5 +454,11 @@ export class ReservaModel {
       console.error('Error al obtener nivel del alumno:', error);
       return 1;
     }
+  }
+
+  private calcularFechaPagoDefecto(): string {
+    // Fecha por defecto (solo se usa si no se proporciona fecha de pago)
+    // Usar fecha de venta más temprana para 2025
+    return '2025-12-01';
   }
 }

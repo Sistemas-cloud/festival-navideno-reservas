@@ -70,28 +70,29 @@ export class AuthModel {
       console.log(`👨‍👩‍👧‍👦 Número de Hermanos: ${hermanosData.length}`);
       
       // Determinar función basada en nivel y grado
+      // 1° de primaria comparte función con Kinder, 6° comparte con Secundaria
       let funcion = '';
-      let nivel = alumno.alumno_nivel;
+      const nivel = alumno.alumno_nivel;
       const grado = alumno.alumno_grado;
       
-      if (grado === 5 || grado === 6) {
-        funcion = '3ra Función';
-        nivel = 4;
-      } else {
-        switch (nivel) {
-          case 1:
-          case 2:
-            funcion = '1ra Función';
-            break;
-          case 3:
-            funcion = '2da Función';
-            break;
-          case 4:
-            funcion = '3ra Función';
-            break;
-          default:
-            funcion = 'Nivel desconocido';
+      if (nivel === 1) {
+        // Kinder va a 1ra Función
+        funcion = '1ra Función';
+      } else if (nivel === 2) {
+        // Primaria
+        if (grado === 1) {
+          funcion = '1ra Función'; // 1° comparte con Kinder
+        } else if (grado === 6) {
+          funcion = '3ra Función'; // 6° comparte con Secundaria
+        } else {
+          funcion = '1ra Función';
         }
+      } else if (nivel === 3) {
+        funcion = '2da Función';
+      } else if (nivel === 4) {
+        funcion = '3ra Función';
+      } else {
+        funcion = 'Nivel desconocido';
       }
       
       console.log(`🎭 Función Asignada: ${funcion}`);
@@ -145,13 +146,13 @@ export class AuthModel {
       
       // Validaciones de fechas
       const today = new Date();
-      const targetDateAsientos = new Date("2024-12-6");
+      const targetDateAsientos = new Date("2025-12-6");
       
       if (today >= targetDateAsientos) {
         console.log('✅ Sistema de reservas: LIBERADO (después del 6 de diciembre)');
       } else {
         console.log('⏰ Sistema de reservas: RESTRINGIDO (antes del 6 de diciembre)');
-        console.log(`📅 Fecha de liberación: 6 de diciembre de 2024`);
+        console.log(`📅 Fecha de liberación: 6 de diciembre de 2025`);
       }
       
       console.log('=====================================\n');

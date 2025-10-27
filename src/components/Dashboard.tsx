@@ -138,45 +138,77 @@ export const Dashboard: React.FC = () => {
   };
 
   // Determinar el nivel de cierre basado en el alumno actual
+  // 1° de primaria comparte función con Kinder (nivel 2)
+  // 6° de primaria comparte función con Secundaria (nivel 4)
   let levelClose = 1;
   hermanos.forEach((hermano: HermanosData) => {
     if (hermano.control === alumnoRef) {
-      let nivel = hermano.nivel;
+      const nivel = hermano.nivel;
       const grado = hermano.grado;
       
-      if (grado === 5 || grado === 6) {
-        nivel = 4;
+      if (nivel === 1) {
+        // Kinder → 1ra Función (nivel 2)
+        levelClose = 2;
+      } else if (nivel === 2) {
+        // Primaria
+        if (grado === 1) {
+          // 1° comparte función con Kinder → 1ra Función (nivel 2)
+          levelClose = 2;
+        } else if (grado === 6) {
+          // 6° comparte función con Secundaria → 3ra Función (nivel 4)
+          levelClose = 4;
+        } else {
+          // Resto de primaria → 1ra Función (nivel 2)
+          levelClose = 2;
+        }
+      } else if (nivel === 3) {
+        // Secundaria → 2da Función (nivel 3)
+        levelClose = 3;
+      } else if (nivel === 4) {
+        // Preparatoria → 3ra Función (nivel 4)
+        levelClose = 4;
       }
-      levelClose = nivel;
     }
   });
 
   // Validar fechas cuando se selecciona una sección
+  // El sistema se cierra ANTES del día de venta correspondiente a cada función
   const validateDates = () => {
     const today = new Date();
-    const targetDateKinder = new Date("2024-12-5");
-    const targetDatePrimaria = new Date("2024-12-5");
-    const targetDateSecundaria = new Date("2024-12-5");
-    const targetDateAsientos = new Date("2024-12-6");
+    today.setHours(0, 0, 0, 0);
 
-    if (today >= targetDateAsientos) {
-      return true; // Sistema liberado
-    } else {
-      if (today >= targetDateKinder && levelClose === 2) {
-        alert("Las fechas de reservas de boletos han concluido.");
+    // Fechas de cierre (día antes de la venta)
+    const fechaCierreKinder = new Date("2025-11-30"); // Cierra el 30 de nov, vende el 1 y 2 de dic
+    const fechaCierrePrimaria = new Date("2025-12-03"); // Cierra el 3 de dic, vende el 4 y 5 de dic
+    const fechaCierreSecundaria = new Date("2025-12-07"); // Cierra el 7 de dic, vende el 8 y 9 de dic
+    const fechaCierrePreparatoria = new Date("2025-12-07"); // Cierra el 7 de dic, vende el 8 y 9 de dic
+
+    fechaCierreKinder.setHours(0, 0, 0, 0);
+    fechaCierrePrimaria.setHours(0, 0, 0, 0);
+    fechaCierreSecundaria.setHours(0, 0, 0, 0);
+    fechaCierrePreparatoria.setHours(0, 0, 0, 0);
+
+    // Validar según la función del alumno
+    if (levelClose === 2) {
+      // 1ra Función (Kinder + Primaria excepto 6°)
+      if (today > fechaCierreKinder) {
+        alert("Las reservas de boletos para la 1ra Función ya han concluido.");
         return false;
       }
-
-      if (today >= targetDatePrimaria && levelClose === 3) {
-        alert("Las fechas de reservas de boletos han concluido.");
+    } else if (levelClose === 3) {
+      // 2da Función (Secundaria)
+      if (today > fechaCierreSecundaria) {
+        alert("Las reservas de boletos para la 2da Función ya han concluido.");
         return false;
       }
-
-      if (today >= targetDateSecundaria && levelClose === 4) {
-        alert("Las fechas de reservas de boletos han concluido.");
+    } else if (levelClose === 4) {
+      // 3ra Función (Preparatoria + 6° de Primaria)
+      if (today > fechaCierrePreparatoria) {
+        alert("Las reservas de boletos para la 3ra Función ya han concluido.");
         return false;
       }
     }
+
     return true;
   };
 
@@ -208,29 +240,28 @@ export const Dashboard: React.FC = () => {
     return hermanosSinDuplicados.map((hermano: HermanosData, index: number) => {
       console.log(`🔍 renderAlumnosInfo - Procesando hermano ${index}:`, hermano);
         let aluNivel = "";
-        let nivel = hermano.nivel;
+        const nivel = hermano.nivel;
         const grado = hermano.grado;
 
-        switch (nivel) {
-          case 1:
+        // Determinar función: 1° y kinder van a la 1ra función, 6° va a 3ra función
+        if (nivel === 1) {
+          // Kinder va a 1ra Función
+          aluNivel = "1ra Función";
+        } else if (nivel === 2) {
+          // Primaria: 1° y el resto van a 1ra Función, 6° va a 3ra Función
+          if (grado === 1) {
+            aluNivel = "1ra Función"; // 1° comparte con Kinder
+          } else if (grado === 6) {
+            aluNivel = "3ra Función"; // 6° comparte con Secundaria
+          } else {
             aluNivel = "1ra Función";
-            break;
-          case 2:
-            aluNivel = "1ra Función";
-            break;
-          case 3:
-            aluNivel = "2da Función";
-            break;
-          case 4:
-            aluNivel = "3ra Función";
-            break;
-          default:
-            aluNivel = "Nivel desconocido";
-        }
-
-        if (grado === 5 || grado === 6) {
+          }
+        } else if (nivel === 3) {
+          aluNivel = "2da Función";
+        } else if (nivel === 4) {
           aluNivel = "3ra Función";
-          nivel = 4;
+        } else {
+          aluNivel = "Nivel desconocido";
         }
 
         return (

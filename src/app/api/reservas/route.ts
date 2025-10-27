@@ -37,28 +37,29 @@ export async function GET(request: NextRequest) {
     }
 
     // Determinar función basada en nivel y grado
+    // 1° de primaria comparte función con Kinder, 6° comparte con Secundaria
     let funcion = '';
-    let nivel = alumno.alumno_nivel;
+    const nivel = alumno.alumno_nivel;
     const grado = alumno.alumno_grado;
     
-    if (grado === 5 || grado === 6) {
-      funcion = '3ra Función';
-      nivel = 4;
-    } else {
-      switch (nivel) {
-        case 1:
-        case 2:
-          funcion = '1ra Función';
-          break;
-        case 3:
-          funcion = '2da Función';
-          break;
-        case 4:
-          funcion = '3ra Función';
-          break;
-        default:
-          funcion = 'Nivel desconocido';
+    if (nivel === 1) {
+      // Kinder va a 1ra Función
+      funcion = '1ra Función';
+    } else if (nivel === 2) {
+      // Primaria
+      if (grado === 1) {
+        funcion = '1ra Función'; // 1° comparte con Kinder
+      } else if (grado === 6) {
+        funcion = '3ra Función'; // 6° comparte con Secundaria
+      } else {
+        funcion = '1ra Función';
       }
+    } else if (nivel === 3) {
+      funcion = '2da Función';
+    } else if (nivel === 4) {
+      funcion = '3ra Función';
+    } else {
+      funcion = 'Nivel desconocido';
     }
 
     // Procesar reservas
