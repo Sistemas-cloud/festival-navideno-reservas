@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { useReservas } from '@/hooks/useReservas';
@@ -15,15 +15,33 @@ interface ReservaAPI {
 }
 import { SeatingSection } from './SeatingSection';
 import { ComprobantePDF } from './ComprobantePDF';
+import { PaymentDateModal } from './PaymentDateModal';
+import { getPaymentDatesForLevel, calculatePaymentDate } from '@/lib/utils/paymentDates';
 
 export const Dashboard: React.FC = () => {
   const { userData, logout } = useAuth();
   const [selectedSection, setSelectedSection] = useState<number>(0);
   const [showComprobante, setShowComprobante] = useState(false);
   const [comprobanteData, setComprobanteData] = useState<ComprobanteData | null>(null);
+  const [showPaymentModalDelete, setShowPaymentModalDelete] = useState(false);
+  const [asientoAEliminar, setAsientoAEliminar] = useState<AsientoComprobante | null>(null);
+  const [alumnoNivel, setAlumnoNivel] = useState<number>(1);
   
   // Llamar hooks antes de cualquier return condicional
   const { eliminarReserva, loading } = useReservas(userData?.alumnoRef || 0);
+  
+  // Determinar el nivel del alumno para el modal de fecha de pago
+  // Este hook debe estar ANTES del return condicional
+  useEffect(() => {
+    if (userData?.hermanos && userData?.alumnoRef) {
+      const hermanos = userData.hermanos;
+      const alumnoRef = userData.alumnoRef;
+      const alumnoActual = hermanos.find((h: HermanosData) => String(h.control) === String(alumnoRef));
+      if (alumnoActual) {
+        setAlumnoNivel(alumnoActual.nivel);
+      }
+    }
+  }, [userData?.hermanos, userData?.alumnoRef]);
   
   // Validar que userData existe antes de acceder a sus propiedades
   if (!userData) {
@@ -50,20 +68,28 @@ export const Dashboard: React.FC = () => {
     console.log(`  ${index + 1}. ${hermano.nombre} (Control: ${hermano.control}) - Es el alumno actual? ${hermano.control === alumnoRef}`);
   });
 
-  // Función para eliminar un asiento individual
-  const eliminarAsientoIndividual = async (asiento: AsientoComprobante) => {
+  // Función para iniciar el proceso de eliminación (abre el modal)
+  const iniciarEliminacion = (asiento: AsientoComprobante) => {
+    setAsientoAEliminar(asiento);
+    setShowPaymentModalDelete(true);
+  };
+
+  // Función para confirmar eliminación después de seleccionar fecha
+  const confirmarEliminacionConFecha = async (fechaPago: string) => {
+    if (!asientoAEliminar) return;
+
     try {
       const asientoParaEliminar = [{
-        fila: asiento.fila,
-        asiento: asiento.asiento
+        fila: asientoAEliminar.fila,
+        asiento: asientoAEliminar.asiento
       }];
       
-      const success = await eliminarReserva(asientoParaEliminar);
+      const success = await eliminarReserva(asientoParaEliminar, fechaPago);
       if (success) {
         // Actualizar el comprobante removiendo el asiento eliminado
         if (comprobanteData) {
           const asientosActualizados = comprobanteData.asientos.filter((a: AsientoComprobante) => 
-            !(a.fila === asiento.fila && a.asiento === asiento.asiento)
+            !(a.fila === asientoAEliminar.fila && a.asiento === asientoAEliminar.asiento)
           );
           
           if (asientosActualizados.length === 0) {
@@ -81,9 +107,20 @@ export const Dashboard: React.FC = () => {
           }
         }
       }
+      
+      // Cerrar el modal
+      setShowPaymentModalDelete(false);
+      setAsientoAEliminar(null);
     } catch (error) {
       console.error('Error al eliminar asiento:', error);
+      setShowPaymentModalDelete(false);
+      setAsientoAEliminar(null);
     }
+  };
+
+  // Función anterior (mantener para compatibilidad, pero ahora llama a iniciarEliminacion)
+  const eliminarAsientoIndividual = (asiento: AsientoComprobante) => {
+    iniciarEliminacion(asiento);
   };
 
   // Función para debug de hermanos
@@ -123,7 +160,8 @@ export const Dashboard: React.FC = () => {
             precio: reserva.precio
           })),
           total: result.data.total,
-          fechaReserva: result.data.fechaReserva
+          fechaReserva: result.data.fechaReserva,
+          fechaPago: result.data.fechaPago
         };
         
         setComprobanteData(comprobanteData);
@@ -137,74 +175,95 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  // Determinar el nivel de cierre basado en el alumno actual
-  // 1° de primaria comparte función con Kinder (nivel 2)
-  // 6° de primaria comparte función con Secundaria (nivel 4)
+  // Determinar la función del alumno para el cierre del portal
+  // Si es usuario interno, usar función asignada directamente
+  // Reglas:
+  // - Función 1: Nivel 1 (maternal) + Nivel 2 (kinder) + Nivel 3 Grado 1 (1° primaria)
+  // - Función 2: Nivel 3 Grados 2-5 (2°-5° primaria)
+  // - Función 3: Nivel 3 Grado 6 (6° primaria) + Nivel 4 (secundaria)
   let levelClose = 1;
-  hermanos.forEach((hermano: HermanosData) => {
-    if (hermano.control === alumnoRef) {
-      const nivel = hermano.nivel;
-      const grado = hermano.grado;
-      
-      if (nivel === 1) {
-        // Kinder → 1ra Función (nivel 2)
-        levelClose = 2;
-      } else if (nivel === 2) {
-        // Primaria
-        if (grado === 1) {
-          // 1° comparte función con Kinder → 1ra Función (nivel 2)
-          levelClose = 2;
-        } else if (grado === 6) {
-          // 6° comparte función con Secundaria → 3ra Función (nivel 4)
-          levelClose = 4;
-        } else {
-          // Resto de primaria → 1ra Función (nivel 2)
-          levelClose = 2;
+  
+  // Si es usuario interno, usar función asignada directamente
+  if (userData.isInternal && userData.funcionAsignada) {
+    levelClose = userData.funcionAsignada;
+    console.log(`🔐 Usuario interno detectado - Función asignada: ${levelClose}`);
+  } else {
+    // Lógica normal para alumnos
+    hermanos.forEach((hermano: HermanosData) => {
+      if (hermano.control === alumnoRef) {
+        const nivel = hermano.nivel;
+        const grado = hermano.grado;
+        
+        if (nivel === 1 || nivel === 2) {
+          // Maternal (nivel 1) y Kinder (nivel 2) → Función 1
+          levelClose = 1;
+        } else if (nivel === 3) {
+          // Primaria
+          if (grado === 1) {
+            // 1° primaria → Función 1
+            levelClose = 1;
+          } else if (grado >= 2 && grado <= 5) {
+            // 2°-5° primaria → Función 2
+            levelClose = 2;
+          } else if (grado === 6) {
+            // 6° primaria → Función 3
+            levelClose = 3;
+          } else {
+            // Por defecto → Función 1
+            levelClose = 1;
+          }
+        } else if (nivel === 4) {
+          // Secundaria → Función 3
+          levelClose = 3;
         }
-      } else if (nivel === 3) {
-        // Secundaria → 2da Función (nivel 3)
-        levelClose = 3;
-      } else if (nivel === 4) {
-        // Preparatoria → 3ra Función (nivel 4)
-        levelClose = 4;
       }
-    }
-  });
+    });
+  }
 
   // Validar fechas cuando se selecciona una sección
-  // El sistema se cierra ANTES del día de venta correspondiente a cada función
+  // El sistema se cierra INICIANDO el segundo día de venta para cada nivel
+  // Los usuarios pueden eliminar asientos pero no pueden reservar nuevos después del cierre
+  // Los usuarios internos nunca están bloqueados por fechas
   const validateDates = () => {
+    // Usuarios internos siempre pueden reservar
+    if (userData.isInternal) {
+      console.log('🔐 Usuario interno: siempre puede reservar');
+      return true;
+    }
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Fechas de cierre (día antes de la venta)
-    const fechaCierreKinder = new Date("2025-11-30"); // Cierra el 30 de nov, vende el 1 y 2 de dic
-    const fechaCierrePrimaria = new Date("2025-12-03"); // Cierra el 3 de dic, vende el 4 y 5 de dic
-    const fechaCierreSecundaria = new Date("2025-12-07"); // Cierra el 7 de dic, vende el 8 y 9 de dic
-    const fechaCierrePreparatoria = new Date("2025-12-07"); // Cierra el 7 de dic, vende el 8 y 9 de dic
+    // Fechas de cierre (iniciando el segundo día de venta)
+    const fechaCierreKinder = new Date("2025-12-02"); // Cierra iniciando el 2 de dic (vende 1 y 2 de dic)
+    const fechaCierrePrimaria = new Date("2025-12-05"); // Cierra iniciando el 5 de dic (vende 4 y 5 de dic)
+    const fechaCierreSecundaria = new Date("2025-12-09"); // Cierra iniciando el 9 de dic (vende 8 y 9 de dic)
 
+    // Establecer al inicio del día (00:00:00) para que cierre iniciando ese día
     fechaCierreKinder.setHours(0, 0, 0, 0);
     fechaCierrePrimaria.setHours(0, 0, 0, 0);
     fechaCierreSecundaria.setHours(0, 0, 0, 0);
-    fechaCierrePreparatoria.setHours(0, 0, 0, 0);
 
     // Validar según la función del alumno
-    if (levelClose === 2) {
-      // 1ra Función (Kinder + Primaria excepto 6°)
-      if (today > fechaCierreKinder) {
-        alert("Las reservas de boletos para la 1ra Función ya han concluido.");
+    if (levelClose === 1) {
+      // Función 1: Maternal + Kinder + 1° primaria
+      // Vende: 1-2 diciembre, Cierra: iniciando el 2 de diciembre
+      if (today >= fechaCierreKinder) {
+        alert("Las reservas de boletos para la 1ra Función ya han concluido. El período de venta terminó el 2 de diciembre. Aún puedes eliminar asientos si lo necesitas.");
+        return false;
+      }
+    } else if (levelClose === 2) {
+      // Función 2: 2°-5° primaria
+      // Vende: 4-5 diciembre, Cierra: iniciando el 5 de diciembre
+      if (today >= fechaCierrePrimaria) {
+        alert("Las reservas de boletos para la 2da Función ya han concluido. El período de venta terminó el 5 de diciembre. Aún puedes eliminar asientos si lo necesitas.");
         return false;
       }
     } else if (levelClose === 3) {
-      // 2da Función (Secundaria)
-      if (today > fechaCierreSecundaria) {
-        alert("Las reservas de boletos para la 2da Función ya han concluido.");
-        return false;
-      }
-    } else if (levelClose === 4) {
-      // 3ra Función (Preparatoria + 6° de Primaria)
-      if (today > fechaCierrePreparatoria) {
-        alert("Las reservas de boletos para la 3ra Función ya han concluido.");
+      // Función 3: 6° primaria + Secundaria
+      // Vende: 8-9 diciembre, Cierra: iniciando el 9 de diciembre
+      if (today >= fechaCierreSecundaria) {
+        alert("Las reservas de boletos para la 3ra Función ya han concluido. El período de venta terminó el 9 de diciembre. Aún puedes eliminar asientos si lo necesitas.");
         return false;
       }
     }
@@ -240,40 +299,78 @@ export const Dashboard: React.FC = () => {
     return hermanosSinDuplicados.map((hermano: HermanosData, index: number) => {
       console.log(`🔍 renderAlumnosInfo - Procesando hermano ${index}:`, hermano);
         let aluNivel = "";
-        const nivel = hermano.nivel;
-        const grado = hermano.grado;
-
-        // Determinar función: 1° y kinder van a la 1ra función, 6° va a 3ra función
-        if (nivel === 1) {
-          // Kinder va a 1ra Función
-          aluNivel = "1ra Función";
-        } else if (nivel === 2) {
-          // Primaria: 1° y el resto van a 1ra Función, 6° va a 3ra Función
-          if (grado === 1) {
-            aluNivel = "1ra Función"; // 1° comparte con Kinder
-          } else if (grado === 6) {
-            aluNivel = "3ra Función"; // 6° comparte con Secundaria
-          } else {
-            aluNivel = "1ra Función";
-          }
-        } else if (nivel === 3) {
-          aluNivel = "2da Función";
-        } else if (nivel === 4) {
-          aluNivel = "3ra Función";
+        
+        // Si es usuario interno, usar función asignada directamente
+        if (userData.isInternal && hermano.control === alumnoRef) {
+          const nombresFunciones: { [key: number]: string } = {
+            1: '1ra Función',
+            2: '2da Función',
+            3: '3ra Función'
+          };
+          aluNivel = nombresFunciones[userData.funcionAsignada || 1] || 'Función';
+          console.log(`🔐 Usuario interno - Función asignada: ${userData.funcionAsignada}`);
         } else {
-          aluNivel = "Nivel desconocido";
+          // Lógica normal para alumnos
+          const nivel = hermano.nivel;
+          const grado = hermano.grado;
+
+          // Determinar función según las nuevas reglas:
+          // - Función 1: Nivel 1 (maternal) + Nivel 2 (kinder) + Nivel 3 Grado 1 (1° primaria)
+          // - Función 2: Nivel 3 Grados 2-5 (2°-5° primaria)
+          // - Función 3: Nivel 3 Grado 6 (6° primaria) + Nivel 4 (secundaria)
+          if (nivel === 1 || nivel === 2) {
+            // Maternal (nivel 1) y Kinder (nivel 2) → Función 1
+            aluNivel = "1ra Función";
+          } else if (nivel === 3) {
+            // Primaria
+            if (grado === 1) {
+              aluNivel = "1ra Función"; // 1° primaria → Función 1
+            } else if (grado >= 2 && grado <= 5) {
+              aluNivel = "2da Función"; // 2°-5° primaria → Función 2
+            } else if (grado === 6) {
+              aluNivel = "3ra Función"; // 6° primaria → Función 3
+            } else {
+              aluNivel = "1ra Función"; // Por defecto
+            }
+          } else if (nivel === 4) {
+            // Secundaria → Función 3
+            aluNivel = "3ra Función";
+          } else {
+            aluNivel = "Nivel desconocido";
+          }
         }
 
+        // Determinar si es el alumno actual (convertir ambos a string para comparación)
+        const esAlumnoActual = String(hermano.control) === String(alumnoRef);
+
         return (
-          <div key={`hermano-${hermano.control}`} className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl p-4 mb-3 shadow-sm hover:shadow-md transition-all duration-300">
+          <div 
+            key={`hermano-${hermano.control}`} 
+            className={`bg-white/80 backdrop-blur-sm border rounded-xl p-4 mb-3 shadow-sm hover:shadow-md transition-all duration-300 ${
+              esAlumnoActual 
+                ? 'border-blue-500 border-2 bg-blue-50/80' 
+                : 'border-gray-200'
+            }`}
+          >
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                esAlumnoActual
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-700 ring-2 ring-blue-400'
+                  : 'bg-gradient-to-r from-blue-500 to-purple-600'
+              }`}>
                 {hermano.control.toString().slice(-2)}
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-gray-800">{hermano.nombre}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-gray-800">{hermano.nombre}</p>
+                  {esAlumnoActual && (
+                    <span className="px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded-full">
+                      Tú
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-gray-600">Control: {hermano.control}</p>
-                <p className="text-sm text-blue-600 font-medium">{aluNivel}</p>
+                <p className="text-sm font-semibold text-blue-600">{aluNivel}</p>
               </div>
             </div>
           </div>
@@ -286,7 +383,7 @@ export const Dashboard: React.FC = () => {
       <SeatingSection 
         section={selectedSection} 
         alumnoRef={alumnoRef}
-        alumnoNombre={hermanos.find(h => h.control === alumnoRef)?.nombre || ''}
+        alumnoNombre={hermanos.find(h => String(h.control) === String(alumnoRef))?.nombre || ''}
         onBack={() => setSelectedSection(0)}
       />
     );
@@ -306,15 +403,56 @@ export const Dashboard: React.FC = () => {
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-red-400 bg-clip-text text-transparent tracking-tight">
                   Festival Navideño
                 </h1>
-                <p className="text-sm text-slate-300 font-medium">Portal de Reservas 2024</p>
+                <p className="text-sm text-slate-300 font-medium">Portal de Reservas 2025</p>
               </div>
           </div>
           <div className="flex items-center space-x-6">
               <div className="text-right">
-                <p className="text-sm font-semibold text-white">
-                  {hermanos.find(h => h.control === alumnoRef)?.nombre || 'Usuario'}
-                </p>
+                <div className="flex items-center justify-end gap-2 mb-1">
+                  <p className="text-sm font-semibold text-white">
+                    {hermanos.find(h => String(h.control) === String(alumnoRef))?.nombre || 'Usuario'}
+                  </p>
+                  {userData.isInternal && (
+                    <span className="px-2 py-0.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold rounded-full shadow-lg border border-purple-400/30">
+                      🔐 ADMIN
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-400 font-mono">#{alumnoRef}</p>
+                <p className="text-xs font-bold text-emerald-400 mt-1">
+                  {(() => {
+                    // Si es usuario interno, usar función asignada directamente
+                    if (userData.isInternal && userData.funcionAsignada) {
+                      const nombresFunciones: { [key: number]: string } = {
+                        1: '🎭 1ra Función',
+                        2: '🎭 2da Función',
+                        3: '🎭 3ra Función'
+                      };
+                      return nombresFunciones[userData.funcionAsignada] || '🎭 Función';
+                    }
+                    
+                    // Convertir ambos a string para comparación (control puede ser string, alumnoRef puede ser número)
+                    const alumnoActual = hermanos.find(h => String(h.control) === String(alumnoRef));
+                    if (!alumnoActual) {
+                      console.log('🔍 Header - Alumno no encontrado. Buscando:', alumnoRef, 'En:', hermanos.map(h => h.control));
+                      return '';
+                    }
+                    const nivel = alumnoActual.nivel;
+                    const grado = alumnoActual.grado;
+                    console.log('🔍 Header - Alumno encontrado. Nivel:', nivel, 'Grado:', grado);
+                    if (nivel === 1 || nivel === 2) {
+                      return '🎭 1ra Función';
+                    } else if (nivel === 3) {
+                      if (grado === 1) return '🎭 1ra Función';
+                      if (grado >= 2 && grado <= 5) return '🎭 2da Función';
+                      if (grado === 6) return '🎭 3ra Función';
+                      return '🎭 1ra Función';
+                    } else if (nivel === 4) {
+                      return '🎭 3ra Función';
+                    }
+                    return '';
+                  })()}
+                </p>
               </div>
             <button
               onClick={logout}
@@ -561,6 +699,21 @@ export const Dashboard: React.FC = () => {
           }}
           onEliminarAsiento={eliminarAsientoIndividual}
           loading={loading}
+        />
+      )}
+
+      {/* Modal de Fecha de Pago para Eliminación */}
+      {showPaymentModalDelete && (
+        <PaymentDateModal
+          isOpen={showPaymentModalDelete}
+          onClose={() => {
+            setShowPaymentModalDelete(false);
+            setAsientoAEliminar(null);
+          }}
+          onConfirm={confirmarEliminacionConFecha}
+          nivel={alumnoNivel}
+          familiaNumber={alumnoRef % 100} // Usar módulo 100 del control como número de familia aproximado
+          alumnoRef={alumnoRef}
         />
       )}
     </div>

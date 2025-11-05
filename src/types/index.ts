@@ -59,6 +59,8 @@ export interface UserData {
   alumnoRef: number;
   alumnoNombre: string;
   hermanos: HermanosData[];
+  isInternal?: boolean; // Indica si es usuario interno/administrador
+  funcionAsignada?: number; // Función asignada para usuarios internos (1, 2, o 3)
 }
 
 export interface SectionConfig {
@@ -84,4 +86,5 @@ export interface ComprobanteData {
   asientos: AsientoComprobante[];
   total: number;
   fechaReserva: string;
+  fechaPago: string;
 }

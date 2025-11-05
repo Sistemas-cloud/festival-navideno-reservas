@@ -4,7 +4,7 @@ import { ReservaModel } from '@/lib/models/ReservaModel';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { asientos, alumno_ref } = body;
+    const { asientos, alumno_ref, fecha_pago } = body;
 
     if (!asientos || !Array.isArray(asientos) || asientos.length === 0) {
       return NextResponse.json({
@@ -20,8 +20,15 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    if (!fecha_pago) {
+      return NextResponse.json({
+        success: false,
+        message: 'La fecha de pago es requerida'
+      }, { status: 400 });
+    }
+
     const reservaModel = new ReservaModel();
-    const result = await reservaModel.eliminarReserva(asientos, parseInt(alumno_ref));
+    const result = await reservaModel.eliminarReserva(asientos, parseInt(alumno_ref), fecha_pago);
     
     return NextResponse.json(result);
 

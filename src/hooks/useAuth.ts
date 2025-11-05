@@ -48,10 +48,16 @@ export const useAuth = () => {
       const result = await response.json();
 
       if (result.success && result.data) {
+        // Obtener nombre del primer hermano (usuario actual)
+        const primerHermano = result.data[0];
+        const nombreCompleto = primerHermano?.nombre || '';
+        
         const newUserData: UserData = {
           alumnoRef,
-          alumnoNombre: '', // Se puede obtener del nombre completo más adelante
+          alumnoNombre: nombreCompleto,
           hermanos: result.data,
+          isInternal: result.isInternal || false,
+          funcionAsignada: result.funcionAsignada || undefined
         };
 
         // Debug: Log de datos que se van a guardar
@@ -59,6 +65,8 @@ export const useAuth = () => {
         console.log('📏 useAuth Debug - result.data.length:', result.data.length);
         console.log('💾 useAuth Debug - newUserData:', newUserData);
         console.log('👥 useAuth Debug - hermanos que se guardarán:', newUserData.hermanos);
+        console.log('🔐 useAuth Debug - isInternal:', newUserData.isInternal);
+        console.log('🎭 useAuth Debug - funcionAsignada:', newUserData.funcionAsignada);
 
         localStorage.setItem('userData', JSON.stringify(newUserData));
         

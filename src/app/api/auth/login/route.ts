@@ -44,40 +44,7 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Buscar alumno (alumno_ref como string)
-    const { data: alumno, error: alumnoError } = await supabase
-      .from('alumno')
-      .select('alumno_id, alumno_ref, alumno_app, alumno_apm, alumno_nombre, alumno_nivel, alumno_grado, alumno_status')
-      .eq('alumno_ref', alumno_ref.toString())
-      .not('alumno_status', 'in', '(0,3)')
-      .single();
-
-    if (alumnoError || !alumno) {
-      console.error('❌ Error al buscar alumno:', alumnoError);
-      return NextResponse.json({
-        success: false,
-        message: 'Número de control desconocido'
-      }, { status: 401 });
-    }
-
-    // Verificar contraseña
-    const { error: detalleError } = await supabase
-      .from('alumno_detalles')
-      .select('*')
-      .eq('alumno_id', alumno.alumno_id)
-      .eq('alumno_clave', clave.toString())
-      .single();
-
-    const isMasterKey = clave.toString() === '2671';
-    if (detalleError && !isMasterKey) {
-      console.error('❌ Error al verificar contraseña:', detalleError);
-      return NextResponse.json({
-        success: false,
-        message: 'Contraseña incorrecta'
-      }, { status: 401 });
-    }
-
-    // Obtener hermanos usando AuthModel
+    // Usar AuthModel para autenticación (maneja usuarios internos y normales)
     const { AuthModel } = await import('@/lib/models/AuthModel');
     const authModel = new AuthModel();
     const authResult = await authModel.authenticate(parseInt(alumno_ref), clave);
@@ -92,9 +59,13 @@ export async function POST(request: NextRequest) {
     const hermanosData = authResult.data || [];
 
     console.log('✅ Login exitoso');
+    
+    // Incluir información de usuario interno en la respuesta
     return NextResponse.json({
       success: true,
-      data: hermanosData
+      data: hermanosData,
+      isInternal: authResult.isInternal || false,
+      funcionAsignada: authResult.funcionAsignada || undefined
     });
 
   } catch (error) {

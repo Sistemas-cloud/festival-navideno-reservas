@@ -69,6 +69,9 @@ export const useReservas = (alumnoRef: number) => {
   ): Promise<boolean> => {
     setLoading(true);
     try {
+      console.log('🔍 useReservas.crearReserva - fechaPago recibida:', fechaPago);
+      console.log('🔍 useReservas.crearReserva - tipo de fechaPago:', typeof fechaPago);
+      
       const response = await fetch('/api/reservas/crear-reserva', {
         method: 'POST',
         headers: {
@@ -80,7 +83,7 @@ export const useReservas = (alumnoRef: number) => {
           hermanos_data: hermanosData,
           precio,
           zona,
-          fecha_pago: fechaPago,
+          fecha_pago: fechaPago, // Enviar la fecha de pago seleccionada
         }),
       });
 
@@ -104,7 +107,12 @@ export const useReservas = (alumnoRef: number) => {
     }
   };
 
-  const eliminarReserva = async (asientos: Asiento[]): Promise<boolean> => {
+  const eliminarReserva = async (asientos: Asiento[], fechaPago: string | null): Promise<boolean> => {
+    if (!fechaPago) {
+      alert('La fecha de pago es requerida para eliminar reservas.');
+      return false;
+    }
+
     setLoading(true);
     try {
       const response = await fetch('/api/reservas/eliminar-reserva', {
@@ -115,6 +123,7 @@ export const useReservas = (alumnoRef: number) => {
         body: JSON.stringify({
           asientos,
           alumno_ref: alumnoRef,
+          fecha_pago: fechaPago,
         }),
       });
 

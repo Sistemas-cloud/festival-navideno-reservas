@@ -4,7 +4,7 @@ import { ReservaModel } from '@/lib/models/ReservaModel';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { idAlumno } = body;
+    const { idAlumno, soloUsuario } = body;
 
     if (!idAlumno) {
       return NextResponse.json({
@@ -14,7 +14,8 @@ export async function POST(request: NextRequest) {
     }
 
     const reservaModel = new ReservaModel();
-    const reservas = await reservaModel.getReservas(parseInt(idAlumno));
+    // Para el mapa de asientos, necesitamos todas las reservas de la función (no solo del usuario)
+    const reservas = await reservaModel.getReservas(parseInt(idAlumno), soloUsuario || false);
     
     return NextResponse.json(reservas);
 

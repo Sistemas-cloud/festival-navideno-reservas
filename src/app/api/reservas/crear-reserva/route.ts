@@ -4,7 +4,7 @@ import { ReservaModel } from '@/lib/models/ReservaModel';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { asientos, alumno_ref, hermanos_data, precio, zona } = body;
+    const { asientos, alumno_ref, hermanos_data, precio, zona, fecha_pago } = body;
 
     if (!asientos || !alumno_ref || !precio || !zona) {
       return NextResponse.json({
@@ -14,12 +14,25 @@ export async function POST(request: NextRequest) {
     }
 
     const reservaModel = new ReservaModel();
+    
+    // Validar si el portal está cerrado para este alumno
+    const validacionCierre = await reservaModel.isPortalCerrado(parseInt(alumno_ref));
+    if (validacionCierre.cerrado) {
+      return NextResponse.json({
+        success: false,
+        message: validacionCierre.mensaje || 'El período de reservas ha concluido. Aún puedes eliminar asientos si lo necesitas.'
+      }, { status: 403 });
+    }
+
+    console.log('🔍 API crear-reserva - Fecha de pago recibida:', fecha_pago);
+
     const result = await reservaModel.crearReserva(
       asientos,
       parseInt(alumno_ref),
       hermanos_data || [],
       parseFloat(precio),
-      zona
+      zona,
+      fecha_pago || null // Pasar la fecha de pago seleccionada
     );
 
     if (result.success) {

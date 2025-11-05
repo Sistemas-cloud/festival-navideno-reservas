@@ -67,10 +67,70 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
   const { asientosDisponibles, reservas, pagos, loading, crearReserva } = useReservas(alumnoRef);
   const [selectedSeats, setSelectedSeats] = useState<Asiento[]>([]);
   const [availableSeats, setAvailableSeats] = useState(asientosDisponibles);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [alumnoNivel, setAlumnoNivel] = useState<number>(1);
+  
+  // Log cuando cambia el nivel
+  useEffect(() => {
+    console.log('🚨 SeatingSection - NIVEL ACTUALIZADO:', alumnoNivel);
+  }, [alumnoNivel]);
 
   useEffect(() => {
     setAvailableSeats(asientosDisponibles);
   }, [asientosDisponibles]);
+
+  // Determinar el nivel del alumno (o función para usuarios internos)
+  useEffect(() => {
+    console.log('🚨 SeatingSection useEffect - INICIANDO DETERMINACIÓN DE NIVEL');
+    console.log('🚨 SeatingSection useEffect - alumnoRef recibido:', alumnoRef);
+    
+    const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+    console.log('🚨 SeatingSection useEffect - userData completo:', userData);
+    console.log('🚨 SeatingSection useEffect - userData.isInternal:', userData.isInternal);
+    console.log('🚨 SeatingSection useEffect - userData.funcionAsignada:', userData.funcionAsignada);
+    console.log('🚨 SeatingSection useEffect - userData.hermanos:', userData.hermanos);
+    
+    // Si es usuario interno, usar función asignada directamente
+    if (userData.isInternal && userData.funcionAsignada) {
+      console.log('🔐 SeatingSection - Usuario interno detectado');
+      console.log('🎭 SeatingSection - Función asignada:', userData.funcionAsignada);
+      // Para usuarios internos, mapear función a nivel educativo para PaymentDateModal:
+      // Función 1 → Nivel 1 (fechas: 1-2 dic)
+      // Función 2 → Nivel 2 (fechas: 4-5 dic) 
+      // Función 3 → Nivel 4 (fechas: 8-9 dic)
+      const nivelMapeado = userData.funcionAsignada === 3 ? 4 : userData.funcionAsignada;
+      console.log('🔐 SeatingSection - Nivel mapeado para PaymentDateModal:', nivelMapeado);
+      setAlumnoNivel(nivelMapeado);
+      return;
+    }
+    
+    // Lógica normal para alumnos
+    const hermanos = userData.hermanos || [];
+    console.log('🚨 SeatingSection useEffect - hermanos array:', hermanos);
+    console.log('🚨 SeatingSection useEffect - hermanos length:', hermanos.length);
+    
+    // Convertir ambos a string para comparación (alumnoRef puede ser número, control puede ser string)
+    const alumnoActual = hermanos.find((h: any) => String(h.control) === String(alumnoRef));
+    console.log('🚨 SeatingSection useEffect - alumnoActual encontrado:', alumnoActual);
+    
+    if (alumnoActual) {
+      console.log('🔍 SeatingSection useEffect - Nivel encontrado:', alumnoActual.nivel);
+      console.log('🚨 SeatingSection useEffect - ESTABLECIENDO NIVEL:', alumnoActual.nivel);
+      
+      // TEMPORAL: Forzar nivel 4 si es secundaria para debug
+      if (alumnoActual.nivel === 4) {
+        console.log('🚨 SeatingSection useEffect - FORZANDO NIVEL 4 PARA SECUNDARIA');
+        setAlumnoNivel(4);
+      } else {
+        setAlumnoNivel(alumnoActual.nivel);
+      }
+    } else {
+      console.log('🔍 SeatingSection useEffect - Alumno no encontrado, usando nivel 1 por defecto');
+      console.log('🚨 SeatingSection useEffect - ESTABLECIENDO NIVEL POR DEFECTO: 1');
+      console.log('🚨 SeatingSection useEffect - DEBUG: Buscando control', alumnoRef, 'en hermanos:', hermanos.map((h: any) => h.control));
+      setAlumnoNivel(1);
+    }
+  }, [alumnoRef]);
 
   // Centrar el scroll horizontal al cargar
   useEffect(() => {
@@ -150,8 +210,7 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
     return classes;
   };
 
-  // Estados para el modal de fecha de pago
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  // Estados para el modal de fecha de pago (ya declarado arriba)
 
   const handleConfirmReservation = async () => {
     if (selectedSeats.length === 0) {
@@ -463,18 +522,14 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
       ))}
 
       {/* Modal de selección de fecha de pago */}
-      <PaymentDateModal
-        isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
-        onConfirm={handlePaymentDateConfirm}
-        nivel={(() => {
-          interface Hermano { control: number; nivel: number; }
-          const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-          const alumnoActual = (userData.hermanos as Hermano[])?.find((h) => h.control === alumnoRef);
-          return alumnoActual?.nivel || 1;
-        })()}
-        familiaNumber={alumnoRef % 100}
-      />
+        <PaymentDateModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          onConfirm={handlePaymentDateConfirm}
+          nivel={alumnoNivel}
+          familiaNumber={alumnoRef % 100}
+          alumnoRef={alumnoRef}
+        />
     </div>
   );
 };

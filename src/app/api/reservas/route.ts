@@ -17,7 +17,17 @@ export async function GET(request: NextRequest) {
       .from('reservas')
       .select('*')
       .eq('referencia', parseInt(alumnoRef))
+      .eq('estado', 'reservado') // Solo reservas activas (no pagadas)
       .order('id', { ascending: false });
+    
+    console.log('🔍 API Reservas - Reservas obtenidas de BD:', reservas?.map(r => ({
+      id: r.id,
+      fila: r.fila,
+      asiento: r.asiento,
+      fecha_pago: r.fecha_pago,
+      estado: r.estado,
+      fecha_reserva: r.fecha_reserva
+    })));
 
     if (reservasError) {
       console.error('Error al obtener reservas:', reservasError);
@@ -36,27 +46,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 });
     }
 
+    // Determinar función basada en nivel
     // Determinar función basada en nivel y grado
-    // 1° de primaria comparte función con Kinder, 6° comparte con Secundaria
+    // Reglas:
+    // - Función 1: Nivel 1 (maternal) + Nivel 2 (kinder) + Nivel 3 Grado 1 (1° primaria)
+    // - Función 2: Nivel 3 Grados 2-5 (2°-5° primaria)
+    // - Función 3: Nivel 3 Grado 6 (6° primaria) + Nivel 4 (secundaria)
     let funcion = '';
     const nivel = alumno.alumno_nivel;
     const grado = alumno.alumno_grado;
     
-    if (nivel === 1) {
-      // Kinder va a 1ra Función
+    if (nivel === 1 || nivel === 2) {
+      // Maternal (nivel 1) y Kinder (nivel 2) → Función 1
       funcion = '1ra Función';
-    } else if (nivel === 2) {
+    } else if (nivel === 3) {
       // Primaria
       if (grado === 1) {
-        funcion = '1ra Función'; // 1° comparte con Kinder
+        funcion = '1ra Función'; // 1° primaria → Función 1
+      } else if (grado >= 2 && grado <= 5) {
+        funcion = '2da Función'; // 2°-5° primaria → Función 2
       } else if (grado === 6) {
-        funcion = '3ra Función'; // 6° comparte con Secundaria
+        funcion = '3ra Función'; // 6° primaria → Función 3
       } else {
-        funcion = '1ra Función';
+        funcion = '1ra Función'; // Por defecto
       }
-    } else if (nivel === 3) {
-      funcion = '2da Función';
     } else if (nivel === 4) {
+      // Secundaria → Función 3
       funcion = '3ra Función';
     } else {
       funcion = 'Nivel desconocido';
@@ -126,7 +141,8 @@ export async function GET(request: NextRequest) {
         fila: reserva.fila,
         asiento: reserva.asiento,
         precio: precio,
-        fechaReserva: reserva.fecha_pago ? new Date(reserva.fecha_pago).toLocaleDateString('es-MX') : new Date().toLocaleDateString('es-MX'),
+        fechaReserva: reserva.fecha_reserva ? new Date(reserva.fecha_reserva).toLocaleDateString('es-MX') : new Date().toLocaleDateString('es-MX'),
+        fechaPago: reserva.fecha_pago || null, // Mantener formato original (YYYY-MM-DD)
         pagado: reserva.estado === 'pagado' || reserva.estado === 'pago',
         estado: reserva.estado
       };
@@ -134,6 +150,35 @@ export async function GET(request: NextRequest) {
 
     // Calcular total
     const total = reservasProcesadas.reduce((sum, reserva) => sum + reserva.precio, 0);
+
+    // Obtener fecha de pago: todas las reservas de un alumno deben tener la misma fecha de pago
+    // Usar directamente las reservas de BD (no las procesadas) para obtener fecha_pago
+    let fechaPagoComun = null;
+    if (reservas && reservas.length > 0) {
+      // Buscar la primera reserva que tenga fecha_pago válida (no null, no undefined, no string vacío)
+      const reservaConFecha = reservas.find(r => r.fecha_pago && r.fecha_pago.trim() !== '');
+      
+      if (reservaConFecha && reservaConFecha.fecha_pago) {
+        fechaPagoComun = reservaConFecha.fecha_pago;
+        console.log('🔍 API Reservas - Fecha de pago encontrada en BD:', fechaPagoComun, 'de la reserva ID:', reservaConFecha.id);
+      } else {
+        console.log('⚠️ API Reservas - No se encontró fecha de pago válida en ninguna reserva');
+        // Listar todas las fechas_pago encontradas para debug
+        const todasFechas = reservas.map(r => ({ id: r.id, fecha_pago: r.fecha_pago }));
+        console.log('🔍 API Reservas - Todas las fechas_pago en BD:', todasFechas);
+      }
+      
+      // Verificar que todas las reservas tengan la misma fecha de pago
+      const fechasUnicas = reservas
+        .filter(r => r.fecha_pago && r.fecha_pago.trim() !== '')
+        .map(r => r.fecha_pago);
+      const setFechasUnicas = new Set(fechasUnicas);
+      
+      if (setFechasUnicas.size > 1) {
+        console.warn('⚠️ API Reservas - ADVERTENCIA: Hay múltiples fechas de pago diferentes:', Array.from(setFechasUnicas));
+        console.warn('⚠️ API Reservas - Se usará la fecha de la primera reserva con fecha válida');
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -145,7 +190,8 @@ export async function GET(request: NextRequest) {
         },
         reservas: reservasProcesadas,
         total: total,
-        fechaReserva: reservasProcesadas.length > 0 ? reservasProcesadas[0].fechaReserva : new Date().toLocaleDateString('es-MX')
+        fechaReserva: reservasProcesadas.length > 0 ? reservasProcesadas[0].fechaReserva : new Date().toLocaleDateString('es-MX'),
+        fechaPago: fechaPagoComun
       }
     });
 

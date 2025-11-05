@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import jsPDF from 'jspdf';
 import { ComprobanteData, AsientoComprobante } from '@/types';
+import { formatPaymentDate } from '@/lib/utils/paymentDates';
 
 interface ComprobantePDFProps {
   data: ComprobanteData;
@@ -20,78 +21,165 @@ export const ComprobantePDF: React.FC<ComprobantePDFProps> = ({ data, onClose, o
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
+    const marginTop = 30;
+    const marginBottom = 40;
+    const marginLeft = 20;
+    const marginRight = 20;
+    const availableHeight = pageHeight - marginTop - marginBottom;
 
     // Configurar fuente
     pdf.setFont('helvetica');
 
-    // Título principal
-    pdf.setFontSize(24);
-    pdf.setTextColor(37, 99, 235); // Azul
-    pdf.text('FESTIVAL NAVIDEÑO', pageWidth / 2, 30, { align: 'center' });
-    
-    pdf.setFontSize(16);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text('COMPROBANTE DE RESERVA', pageWidth / 2, 40, { align: 'center' });
+    // Función auxiliar para agregar nueva página si es necesario
+    const checkAndAddPage = (currentY: number, spaceNeeded: number): number => {
+      if (currentY + spaceNeeded > pageHeight - marginBottom) {
+        pdf.addPage();
+        return marginTop;
+      }
+      return currentY;
+    };
 
-    // Línea decorativa
-    pdf.setDrawColor(37, 99, 235);
-    pdf.setLineWidth(0.5);
-    pdf.line(20, 45, pageWidth - 20, 45);
+    // Función auxiliar para dibujar encabezado de página
+    const drawHeader = (yPos: number): number => {
+      pdf.setFontSize(24);
+      pdf.setTextColor(37, 99, 235); // Azul
+      pdf.text('FESTIVAL NAVIDEÑO', pageWidth / 2, yPos, { align: 'center' });
+      
+      pdf.setFontSize(16);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('COMPROBANTE DE RESERVA', pageWidth / 2, yPos + 10, { align: 'center' });
+
+      // Línea decorativa
+      pdf.setDrawColor(37, 99, 235);
+      pdf.setLineWidth(0.5);
+      pdf.line(marginLeft, yPos + 15, pageWidth - marginRight, yPos + 15);
+
+      return yPos + 20;
+    };
+
+    // Función auxiliar para dibujar pie de página
+    const drawFooter = () => {
+      const pageCount = pdf.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('Festival Navideño - Sistema de Reservas', pageWidth / 2, pageHeight - 15, { align: 'center' });
+        pdf.text(`Página ${i} de ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+      }
+    };
+
+    let yPosition = marginTop;
+    
+    // Encabezado
+    yPosition = drawHeader(yPosition);
 
     // Información del alumno
     pdf.setFontSize(14);
-    pdf.text('INFORMACIÓN DEL ALUMNO', 20, 60);
+    yPosition = checkAndAddPage(yPosition, 50);
+    pdf.text('INFORMACIÓN DEL ALUMNO', marginLeft, yPosition);
     
     pdf.setFontSize(12);
-    pdf.text(`Nombre: ${data.alumnoNombre}`, 20, 70);
-    pdf.text(`Control: ${data.alumnoControl}`, 20, 78);
-    pdf.text(`Función: ${data.funcion}`, 20, 86);
-    pdf.text(`Fecha de Reserva: ${data.fechaReserva}`, 20, 94);
+    yPosition += 10;
+    const lines = [
+      `Nombre: ${data.alumnoNombre}`,
+      `Control: ${data.alumnoControl}`,
+      `Función: ${data.funcion}`,
+      `Fecha de Reserva: ${data.fechaReserva}`
+    ];
+    
+    lines.forEach((line, idx) => {
+      yPosition = checkAndAddPage(yPosition, 8);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(line, marginLeft, yPosition);
+      yPosition += 8;
+    });
+    
+    // Fecha de pago destacada
+    yPosition = checkAndAddPage(yPosition, 10);
+    pdf.setFontSize(12);
+    pdf.setTextColor(220, 38, 127); // Rosa/Rojo para destacar
+    const fechaPagoFormateada = data.fechaPago ? formatPaymentDate(data.fechaPago) : data.fechaPago || 'No especificada';
+    pdf.text(`Fecha de Pago: ${fechaPagoFormateada}`, marginLeft, yPosition);
 
     // Línea separadora
-    pdf.line(20, 100, pageWidth - 20, 100);
+    yPosition += 6;
+    pdf.setDrawColor(37, 99, 235);
+    pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+    yPosition += 10;
 
     // Detalle de asientos
     pdf.setFontSize(14);
-    pdf.text('ASIENTOS RESERVADOS', 20, 115);
+    pdf.setTextColor(0, 0, 0);
+    yPosition = checkAndAddPage(yPosition, 10);
+    pdf.text('ASIENTOS RESERVADOS', marginLeft, yPosition);
+    yPosition += 10;
 
-    let yPosition = 125;
     if (data.asientos && data.asientos.length > 0) {
       data.asientos.forEach((asiento, index) => {
-      pdf.setFontSize(11);
-      pdf.text(`${index + 1}. Sección: ${asiento.seccion}`, 20, yPosition);
-      pdf.text(`   Fila: ${asiento.fila} - Asiento: ${asiento.asiento}`, 25, yPosition + 8);
-      pdf.text(`   Precio: $${asiento.precio}`, 25, yPosition + 16);
-      yPosition += 25;
+        yPosition = checkAndAddPage(yPosition, 25);
+        pdf.setFontSize(11);
+        pdf.text(`${index + 1}. Sección: ${asiento.seccion}`, marginLeft, yPosition);
+        pdf.text(`   Fila: ${asiento.fila} - Asiento: ${asiento.asiento}`, marginLeft + 5, yPosition + 8);
+        pdf.text(`   Precio: $${asiento.precio}`, marginLeft + 5, yPosition + 16);
+        yPosition += 25;
       });
     } else {
+      yPosition = checkAndAddPage(yPosition, 15);
       pdf.setFontSize(11);
-      pdf.text('No hay asientos reservados', 20, yPosition);
+      pdf.text('No hay asientos reservados', marginLeft, yPosition);
       yPosition += 15;
     }
 
     // Total
+    yPosition = checkAndAddPage(yPosition, 15);
     pdf.setFontSize(14);
     pdf.setTextColor(37, 99, 235);
-    pdf.text('TOTAL A PAGAR', pageWidth - 60, yPosition + 10);
+    pdf.text('TOTAL A PAGAR', pageWidth - marginRight - 60, yPosition);
     pdf.setFontSize(16);
-    pdf.text(`$${data.total}`, pageWidth - 60, yPosition + 20);
+    pdf.text(`$${data.total}`, pageWidth - marginRight - 60, yPosition + 10);
 
     // Línea final
+    yPosition += 15;
     pdf.setDrawColor(37, 99, 235);
-    pdf.line(20, yPosition + 30, pageWidth - 20, yPosition + 30);
+    pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+    yPosition += 15;
 
     // Información adicional
     pdf.setFontSize(10);
     pdf.setTextColor(100, 100, 100);
-    pdf.text('• Presentar este comprobante al momento del pago', 20, yPosition + 45);
-    pdf.text('• Los asientos están reservados por 24 horas', 20, yPosition + 52);
-    pdf.text('• Para dudas contactar al administrador', 20, yPosition + 59);
+    const infoLines = [
+      '• Presentar este comprobante al momento del pago',
+      '• Para dudas contactar al administrador'
+    ];
+    
+    infoLines.forEach(line => {
+      yPosition = checkAndAddPage(yPosition, 7);
+      pdf.text(line, marginLeft, yPosition);
+      yPosition += 7;
+    });
 
-    // Pie de página
-    pdf.setFontSize(8);
-    pdf.text('Festival Navideño - Sistema de Reservas', pageWidth / 2, pageHeight - 20, { align: 'center' });
-    pdf.text(`Generado el: ${new Date().toLocaleString()}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+    // Advertencia importante sobre fecha de pago
+    yPosition = checkAndAddPage(yPosition, 20);
+    pdf.setFontSize(11);
+    pdf.setTextColor(220, 38, 127); // Rosa/Rojo para destacar
+    
+    // Dividir el texto en múltiples líneas si es muy largo
+    const fechaFormateada = data.fechaPago ? formatPaymentDate(data.fechaPago) : data.fechaPago || 'fecha indicada';
+    const advertenciaTexto = `⚠️ IMPORTANTE: Si no realizas el pago el día ${fechaFormateada}, tus asientos serán liberados automáticamente y volverán a estar disponibles para el público.`;
+    
+    // Dividir texto en líneas que caben en el ancho de página
+    const maxWidth = pageWidth - marginLeft - marginRight;
+    const splitText = pdf.splitTextToSize(advertenciaTexto, maxWidth);
+    
+    splitText.forEach((line: string) => {
+      yPosition = checkAndAddPage(yPosition, 7);
+      pdf.text(line, marginLeft, yPosition);
+      yPosition += 7;
+    });
+
+    // Dibujar pie de página en todas las páginas
+    drawFooter();
 
     // Guardar PDF
     pdf.save(`comprobante-${data.alumnoControl}-${Date.now()}.pdf`);
@@ -99,9 +187,9 @@ export const ComprobantePDF: React.FC<ComprobantePDFProps> = ({ data, onClose, o
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+        {/* Header fijo */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-2xl flex-shrink-0">
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-2xl font-bold">🎫 Comprobante de Reserva</h2>
@@ -116,8 +204,45 @@ export const ComprobantePDF: React.FC<ComprobantePDFProps> = ({ data, onClose, o
           </div>
         </div>
 
-        {/* Contenido del comprobante */}
-        <div ref={comprobanteRef} className="p-6">
+        {/* Contenido scrolleable */}
+        <div ref={comprobanteRef} className="p-6 overflow-y-auto flex-1 min-h-0">
+          {/* ADVERTENCIAS IMPORTANTES AL INICIO */}
+          {data.fechaPago && (
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-pink-50 to-red-50 rounded-lg p-4 border-2 border-pink-300">
+                <div className="flex items-start">
+                  <span className="text-2xl mr-3">📅</span>
+                  <div className="flex-1">
+                    <p className="font-semibold text-red-700 mb-1">Fecha de Pago:</p>
+                    <p className="text-lg font-bold text-red-600">{formatPaymentDate(data.fechaPago)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Advertencia importante */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">⚠️ Advertencia Importante</h3>
+            <div className="bg-red-50 rounded-lg p-4 border-2 border-red-300">
+              <div className="flex items-start">
+                <span className="text-2xl mr-3">🚨</span>
+                <div className="flex-1">
+                  <p className="font-semibold text-red-700 mb-2">
+                    Liberación Automática de Asientos
+                  </p>
+                  <p className="text-sm text-red-600 leading-relaxed">
+                    {data.fechaPago ? (
+                      <>Si no realizas el pago el día <strong>{formatPaymentDate(data.fechaPago)}</strong>, tus asientos serán <strong>liberados automáticamente</strong> y volverán a estar <strong>disponibles para el público</strong>. Perderás tu reserva si no pagas en la fecha indicada.</>
+                    ) : (
+                      <>Si no realizas el pago en la fecha indicada, tus asientos serán <strong>liberados automáticamente</strong> y volverán a estar <strong>disponibles para el público</strong>.</>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Información del alumno */}
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">👤 Información del Alumno</h3>
@@ -205,10 +330,6 @@ export const ComprobantePDF: React.FC<ComprobantePDFProps> = ({ data, onClose, o
                   Presentar este comprobante al momento del pago
                 </li>
                 <li className="flex items-center">
-                  <span className="text-yellow-600 mr-2">⏰</span>
-                  Los asientos están reservados por 24 horas
-                </li>
-                <li className="flex items-center">
                   <span className="text-yellow-600 mr-2">📞</span>
                   Para dudas contactar al administrador
                 </li>
@@ -217,8 +338,8 @@ export const ComprobantePDF: React.FC<ComprobantePDFProps> = ({ data, onClose, o
           </div>
         </div>
 
-        {/* Footer con botones */}
-        <div className="bg-gray-50 p-6 rounded-b-2xl">
+        {/* Footer con botones - Fijo en la parte inferior */}
+        <div className="bg-gray-50 p-6 rounded-b-2xl border-t border-gray-200 flex-shrink-0 shadow-lg">
           <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={generarPDF}

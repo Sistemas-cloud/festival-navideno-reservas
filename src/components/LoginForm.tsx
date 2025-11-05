@@ -20,6 +20,12 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       return;
     }
 
+    // Si intentan entrar como admin en el portal de alumnos, redirigir al panel admin
+    if (alumnoRef.trim().toLowerCase() === 'admin') {
+      window.location.href = '/admin';
+      return;
+    }
+
     const success = await login(parseInt(alumnoRef), clave);
     if (success) {
       onLoginSuccess();
@@ -79,7 +85,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
             <span>🎄</span>
           </div>
           <h1 className="login-title">Festival Navideño</h1>
-          <p className="login-subtitle">Portal de Reservas 2024</p>
+          <p className="login-subtitle">Portal de Reservas 2025</p>
         </div>
 
         <div className="form-group">
@@ -132,8 +138,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         </button>
 
         <div className="login-footer">
-          <p>✨ ¡Bienvenido al Festival Navideño 2024! ✨</p>
+          <p>✨ ¡Bienvenido al Festival Navideño 2025! ✨</p>
           <p>🎭 Una experiencia mágica te espera 🎭</p>
+          <button
+            type="button"
+            onClick={() => (window.location.href = '/admin')}
+            className="mt-3 text-sm text-blue-100/90 underline hover:text-white"
+          >
+            Entrar como administrador
+          </button>
         </div>
       </form>
     </div>

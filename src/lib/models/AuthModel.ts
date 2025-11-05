@@ -1,17 +1,49 @@
 import { getSupabaseClient } from '../supabase';
+import { validateInternalUser, INTERNAL_USERS } from '../config/internalUsers';
 
 interface HermanoData {
   nombre: string;
   control: number;
   nivel: number;
   grado: number;
+  isInternal?: boolean;
+  funcionAsignada?: number;
 }
 
 export class AuthModel {
   
-  async authenticate(alumnoRef: number, clave: string | number): Promise<{ success: boolean; data?: unknown; message?: string }> {
+  async authenticate(alumnoRef: number, clave: string | number): Promise<{ success: boolean; data?: unknown; message?: string; isInternal?: boolean; funcionAsignada?: number }> {
     try {
       console.log('🔐 AuthModel: Iniciando autenticación para alumno:', alumnoRef);
+      
+      // PRIMERO: Verificar si es un usuario interno/administrador
+      const internalUser = validateInternalUser(alumnoRef, clave.toString());
+      if (internalUser) {
+        console.log('✅ AuthModel: Usuario interno detectado:', internalUser.nombre);
+        console.log(`🎭 Función asignada: ${internalUser.funcion} (${internalUser.descripcion})`);
+        
+        // Crear estructura de datos similar a un alumno normal pero con flag de interno
+        const hermanosData: HermanoData[] = [{
+          control: internalUser.control,
+          nombre: internalUser.nombre,
+          nivel: internalUser.funcion, // Usar función como nivel para compatibilidad
+          grado: 0, // No aplica para usuarios internos
+          isInternal: true,
+          funcionAsignada: internalUser.funcion
+        }];
+        
+        console.log('✅ Usuario interno autenticado exitosamente');
+        console.log('ℹ️  Este usuario puede reservar sin restricciones en la función', internalUser.funcion);
+        
+        return {
+          success: true,
+          data: hermanosData,
+          isInternal: true,
+          funcionAsignada: internalUser.funcion
+        };
+      }
+      
+      // SI NO ES USUARIO INTERNO: Proceder con autenticación normal en BD
       const supabase = getSupabaseClient();
       console.log('✅ AuthModel: Cliente de Supabase obtenido');
       
@@ -70,26 +102,30 @@ export class AuthModel {
       console.log(`👨‍👩‍👧‍👦 Número de Hermanos: ${hermanosData.length}`);
       
       // Determinar función basada en nivel y grado
-      // 1° de primaria comparte función con Kinder, 6° comparte con Secundaria
+      // Reglas:
+      // - Función 1: Nivel 1 (maternal) + Nivel 2 (kinder) + Nivel 3 Grado 1 (1° primaria)
+      // - Función 2: Nivel 3 Grados 2-5 (2°-5° primaria)
+      // - Función 3: Nivel 3 Grado 6 (6° primaria) + Nivel 4 (secundaria)
       let funcion = '';
       const nivel = alumno.alumno_nivel;
       const grado = alumno.alumno_grado;
       
-      if (nivel === 1) {
-        // Kinder va a 1ra Función
+      if (nivel === 1 || nivel === 2) {
+        // Maternal (nivel 1) y Kinder (nivel 2) → Función 1
         funcion = '1ra Función';
-      } else if (nivel === 2) {
+      } else if (nivel === 3) {
         // Primaria
         if (grado === 1) {
-          funcion = '1ra Función'; // 1° comparte con Kinder
+          funcion = '1ra Función'; // 1° primaria → Función 1
+        } else if (grado >= 2 && grado <= 5) {
+          funcion = '2da Función'; // 2°-5° primaria → Función 2
         } else if (grado === 6) {
-          funcion = '3ra Función'; // 6° comparte con Secundaria
+          funcion = '3ra Función'; // 6° primaria → Función 3
         } else {
-          funcion = '1ra Función';
+          funcion = '1ra Función'; // Por defecto
         }
-      } else if (nivel === 3) {
-        funcion = '2da Función';
       } else if (nivel === 4) {
+        // Secundaria → Función 3
         funcion = '3ra Función';
       } else {
         funcion = 'Nivel desconocido';
@@ -146,20 +182,66 @@ export class AuthModel {
       
       // Validaciones de fechas
       const today = new Date();
-      const targetDateAsientos = new Date("2025-12-6");
       
-      if (today >= targetDateAsientos) {
-        console.log('✅ Sistema de reservas: LIBERADO (después del 6 de diciembre)');
+      // Fechas de cierre por función (iniciando el segundo día de venta)
+      // Función 1: Maternal + Kinder + 1° primaria → vende 1-2 dic, cierra iniciando el 2 dic
+      // Función 2: 2°-5° primaria → vende 4-5 dic, cierra iniciando el 5 dic
+      // Función 3: 6° primaria + Secundaria → vende 8-9 dic, cierra iniciando el 9 dic
+      const fechaCierreFuncion1 = new Date("2025-12-02");
+      const fechaCierreFuncion2 = new Date("2025-12-05");
+      const fechaCierreFuncion3 = new Date("2025-12-09");
+      
+      // Establecer al inicio del día (00:00:00) para que cierre iniciando ese día
+      fechaCierreFuncion1.setHours(0, 0, 0, 0);
+      fechaCierreFuncion2.setHours(0, 0, 0, 0);
+      fechaCierreFuncion3.setHours(0, 0, 0, 0);
+      
+      // Determinar fecha de cierre según la función del alumno
+      let fechaCierre = fechaCierreFuncion3; // Por defecto
+      let nombreFuncion = '';
+      
+      if (nivel === 1 || nivel === 2) {
+        // Maternal o Kinder → Función 1
+        fechaCierre = fechaCierreFuncion1;
+        nombreFuncion = '1ra Función';
+      } else if (nivel === 3) {
+        // Primaria
+        if (grado === 1) {
+          fechaCierre = fechaCierreFuncion1;
+          nombreFuncion = '1ra Función';
+        } else if (grado >= 2 && grado <= 5) {
+          fechaCierre = fechaCierreFuncion2;
+          nombreFuncion = '2da Función';
+        } else if (grado === 6) {
+          fechaCierre = fechaCierreFuncion3;
+          nombreFuncion = '3ra Función';
+        } else {
+          fechaCierre = fechaCierreFuncion1;
+          nombreFuncion = '1ra Función';
+        }
+      } else if (nivel === 4) {
+        // Secundaria → Función 3
+        fechaCierre = fechaCierreFuncion3;
+        nombreFuncion = '3ra Función';
+      }
+      
+      // Normalizar today para comparar solo fechas (sin horas)
+      today.setHours(0, 0, 0, 0);
+      
+      if (today >= fechaCierre) {
+        console.log(`✅ Sistema de reservas: CERRADO para ${nombreFuncion} (nivel ${nivel}, grado ${grado}) - iniciando el ${fechaCierre.toLocaleDateString('es-MX')}`);
+        console.log(`ℹ️  Los usuarios pueden eliminar asientos pero no pueden reservar nuevos.`);
       } else {
-        console.log('⏰ Sistema de reservas: RESTRINGIDO (antes del 6 de diciembre)');
-        console.log(`📅 Fecha de liberación: 6 de diciembre de 2025`);
+        console.log(`⏰ Sistema de reservas: ABIERTO para ${nombreFuncion} (nivel ${nivel}, grado ${grado})`);
+        console.log(`📅 Fecha de cierre: ${fechaCierre.toLocaleDateString('es-MX')} (cerrará iniciando ese día)`);
       }
       
       console.log('=====================================\n');
       
       return {
         success: true,
-        data: hermanosData
+        data: hermanosData,
+        isInternal: false
       };
 
     } catch (error) {
