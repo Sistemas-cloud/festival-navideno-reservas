@@ -1,5 +1,6 @@
 import { getSupabaseClient } from '../supabase';
 import { validateInternalUser } from '../config/internalUsers';
+import { hasEarlyAccess, getOpeningDateForFunction } from '../config/earlyAccess';
 
 interface HermanoData {
   nombre: string;
@@ -227,6 +228,39 @@ export class AuthModel {
       
       // Normalizar today para comparar solo fechas (sin horas)
       today.setHours(0, 0, 0, 0);
+      
+      // Calcular función numérica para validación de acceso anticipado
+      let funcionNum = 3; // Por defecto
+      if (nivel === 1 || nivel === 2 || (nivel === 3 && grado === 1)) {
+        funcionNum = 1;
+      } else if (nivel === 3 && grado >= 2 && grado <= 5) {
+        funcionNum = 2;
+      } else if (nivel === 3 && grado === 6 || nivel === 4) {
+        funcionNum = 3;
+      }
+      
+      // VALIDACIÓN DE ACCESO ANTICIPADO
+      // Verificar si el usuario tiene acceso anticipado o si la fecha de apertura ya pasó
+      const tieneAccesoAnticipado = hasEarlyAccess(alumnoRef);
+      const fechaApertura = getOpeningDateForFunction(funcionNum);
+      fechaApertura.setHours(0, 0, 0, 0);
+      
+      if (!tieneAccesoAnticipado && today < fechaApertura) {
+        const fechaAperturaFormateada = fechaApertura.toLocaleDateString('es-MX', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        console.log(`🚫 Acceso denegado: El sistema estará disponible a partir del ${fechaAperturaFormateada} para la ${nombreFuncion}`);
+        return {
+          success: false,
+          message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha.`
+        };
+      }
+      
+      if (tieneAccesoAnticipado) {
+        console.log(`✅ Acceso anticipado concedido para control ${alumnoRef}`);
+      }
       
       if (today >= fechaCierre) {
         console.log(`✅ Sistema de reservas: CERRADO para ${nombreFuncion} (nivel ${nivel}, grado ${grado}) - iniciando el ${fechaCierre.toLocaleDateString('es-MX')}`);
