@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase';
+import { isInternalUser, findInternalUser } from '@/lib/config/internalUsers';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,14 +11,86 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'alumno_ref is required' }, { status: 400 });
     }
 
+    const alumnoRefNum = parseInt(alumnoRef);
     const supabase = getSupabaseClient();
     
-    // Obtener las reservas del alumno
+    // Verificar si es usuario interno
+    const esUsuarioInterno = isInternalUser(alumnoRefNum);
+    let alumnoInfo: {
+      nombre: string;
+      control: string;
+      funcion: string;
+    };
+    
+    if (esUsuarioInterno) {
+      // Usuario interno: obtener información de la configuración
+      const internalUser = findInternalUser(alumnoRefNum);
+      if (!internalUser) {
+        return NextResponse.json({ error: 'Usuario interno no encontrado' }, { status: 404 });
+      }
+      
+      const nombresFunciones: { [key: number]: string } = {
+        1: '1ra Función',
+        2: '2da Función',
+        3: '3ra Función'
+      };
+      
+      alumnoInfo = {
+        nombre: internalUser.nombre,
+        control: internalUser.control.toString(),
+        funcion: nombresFunciones[internalUser.funcion] || 'Función desconocida'
+      };
+      
+      console.log('🔐 API Reservas - Usuario interno detectado:', alumnoInfo);
+    } else {
+      // Usuario normal: obtener información de la base de datos
+      const { data: alumno, error: alumnoError } = await supabase
+        .from('alumno')
+        .select('alumno_app, alumno_apm, alumno_nombre, alumno_nivel, alumno_grado')
+        .eq('alumno_ref', alumnoRefNum)
+        .single();
+
+      if (alumnoError || !alumno) {
+        console.error('Error al obtener alumno:', alumnoError);
+        return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 });
+      }
+      
+      // Determinar función basada en nivel y grado
+      let funcion = '';
+      const nivel = alumno.alumno_nivel;
+      const grado = alumno.alumno_grado;
+      
+      if (nivel === 1 || nivel === 2) {
+        funcion = '1ra Función';
+      } else if (nivel === 3) {
+        if (grado === 1) {
+          funcion = '1ra Función';
+        } else if (grado >= 2 && grado <= 5) {
+          funcion = '2da Función';
+        } else if (grado === 6) {
+          funcion = '3ra Función';
+        } else {
+          funcion = '1ra Función';
+        }
+      } else if (nivel === 4) {
+        funcion = '3ra Función';
+      } else {
+        funcion = 'Nivel desconocido';
+      }
+      
+      alumnoInfo = {
+        nombre: `${alumno.alumno_app} ${alumno.alumno_apm} ${alumno.alumno_nombre}`,
+        control: alumnoRef,
+        funcion: funcion
+      };
+    }
+    
+    // Obtener las reservas del alumno (incluye reservadas y pagadas para ver todos los boletos)
     const { data: reservas, error: reservasError } = await supabase
       .from('reservas')
       .select('*')
-      .eq('referencia', parseInt(alumnoRef))
-      .eq('estado', 'reservado') // Solo reservas activas (no pagadas)
+      .eq('referencia', alumnoRefNum)
+      .in('estado', ['reservado', 'pagado']) // Incluir tanto reservadas como pagadas
       .order('id', { ascending: false });
     
     console.log('🔍 API Reservas - Reservas obtenidas de BD:', reservas?.map(r => ({
@@ -34,48 +107,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Error al obtener reservas' }, { status: 500 });
     }
 
-    // Obtener información del alumno
-    const { data: alumno, error: alumnoError } = await supabase
-      .from('alumno')
-      .select('alumno_app, alumno_apm, alumno_nombre, alumno_nivel, alumno_grado')
-      .eq('alumno_ref', parseInt(alumnoRef))
-      .single();
-
-    if (alumnoError || !alumno) {
-      console.error('Error al obtener alumno:', alumnoError);
-      return NextResponse.json({ error: 'Alumno no encontrado' }, { status: 404 });
-    }
-
-    // Determinar función basada en nivel
-    // Determinar función basada en nivel y grado
-    // Reglas:
-    // - Función 1: Nivel 1 (maternal) + Nivel 2 (kinder) + Nivel 3 Grado 1 (1° primaria)
-    // - Función 2: Nivel 3 Grados 2-5 (2°-5° primaria)
-    // - Función 3: Nivel 3 Grado 6 (6° primaria) + Nivel 4 (secundaria)
-    let funcion = '';
-    const nivel = alumno.alumno_nivel;
-    const grado = alumno.alumno_grado;
-    
-    if (nivel === 1 || nivel === 2) {
-      // Maternal (nivel 1) y Kinder (nivel 2) → Función 1
-      funcion = '1ra Función';
-    } else if (nivel === 3) {
-      // Primaria
-      if (grado === 1) {
-        funcion = '1ra Función'; // 1° primaria → Función 1
-      } else if (grado >= 2 && grado <= 5) {
-        funcion = '2da Función'; // 2°-5° primaria → Función 2
-      } else if (grado === 6) {
-        funcion = '3ra Función'; // 6° primaria → Función 3
-      } else {
-        funcion = '1ra Función'; // Por defecto
-      }
-    } else if (nivel === 4) {
-      // Secundaria → Función 3
-      funcion = '3ra Función';
-    } else {
-      funcion = 'Nivel desconocido';
-    }
 
     // Procesar reservas
     const reservasProcesadas = reservas.map(reserva => {
@@ -183,11 +214,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        alumno: {
-          nombre: `${alumno.alumno_app} ${alumno.alumno_apm} ${alumno.alumno_nombre}`,
-          control: alumnoRef,
-          funcion: funcion
-        },
+        alumno: alumnoInfo,
         reservas: reservasProcesadas,
         total: total,
         fechaReserva: reservasProcesadas.length > 0 ? reservasProcesadas[0].fechaReserva : new Date().toLocaleDateString('es-MX'),
