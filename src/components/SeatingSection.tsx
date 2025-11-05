@@ -372,7 +372,7 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
               <div className="relative overflow-hidden rounded-2xl shadow-2xl mb-6">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
                 <Image 
-                  src="/escenario.png" 
+                  src="/banner.png" 
                   alt="Escenario del Festival Navideño" 
                   width={800}
                   height={192}
