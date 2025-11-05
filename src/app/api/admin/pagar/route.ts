@@ -78,8 +78,9 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true, data: { control, pagadas: reservasAlumno.length } });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, message: 'Error inesperado', detail: e?.message }, { status: 500 });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : 'Error desconocido';
+    return NextResponse.json({ success: false, message: 'Error inesperado', detail: errorMessage }, { status: 500 });
   }
 }
 

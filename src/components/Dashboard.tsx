@@ -16,7 +16,6 @@ interface ReservaAPI {
 import { SeatingSection } from './SeatingSection';
 import { ComprobantePDF } from './ComprobantePDF';
 import { PaymentDateModal } from './PaymentDateModal';
-import { getPaymentDatesForLevel, calculatePaymentDate } from '@/lib/utils/paymentDates';
 
 export const Dashboard: React.FC = () => {
   const { userData, logout } = useAuth();

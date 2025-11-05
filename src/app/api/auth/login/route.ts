@@ -34,15 +34,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🔐 Iniciando autenticación directa...');
-    
-    // Crear cliente de Supabase directamente
-    const { createClient } = await import('@supabase/supabase-js');
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    });
 
     // Usar AuthModel para autenticación (maneja usuarios internos y normales)
     const { AuthModel } = await import('@/lib/models/AuthModel');

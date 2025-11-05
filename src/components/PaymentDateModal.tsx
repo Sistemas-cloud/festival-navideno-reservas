@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { formatPaymentDate, getPaymentDatesForLevel, calculatePaymentDate } from '@/lib/utils/paymentDates';
+import { formatPaymentDate, getPaymentDatesForLevel } from '@/lib/utils/paymentDates';
 
 interface PaymentDateModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (selectedDate: string) => void;
   nivel: number;
-  familiaNumber: number;
+  familiaNumber?: number;
   alumnoRef: number;
 }
 
@@ -24,7 +24,7 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
   onClose,
   onConfirm,
   nivel,
-  familiaNumber,
+  familiaNumber: _familiaNumber, // eslint-disable-line @typescript-eslint/no-unused-vars
   alumnoRef
 }) => {
   const [selectedDate, setSelectedDate] = useState<string>('');

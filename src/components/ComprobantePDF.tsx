@@ -25,7 +25,6 @@ export const ComprobantePDF: React.FC<ComprobantePDFProps> = ({ data, onClose, o
     const marginBottom = 40;
     const marginLeft = 20;
     const marginRight = 20;
-    const availableHeight = pageHeight - marginTop - marginBottom;
 
     // Configurar fuente
     pdf.setFont('helvetica');
@@ -88,7 +87,7 @@ export const ComprobantePDF: React.FC<ComprobantePDFProps> = ({ data, onClose, o
       `Fecha de Reserva: ${data.fechaReserva}`
     ];
     
-    lines.forEach((line, idx) => {
+    lines.forEach((line) => {
       yPosition = checkAndAddPage(yPosition, 8);
       pdf.setTextColor(0, 0, 0);
       pdf.text(line, marginLeft, yPosition);

@@ -1,5 +1,5 @@
 import { getSupabaseClient } from '../supabase';
-import { validateInternalUser, INTERNAL_USERS } from '../config/internalUsers';
+import { validateInternalUser } from '../config/internalUsers';
 
 interface HermanoData {
   nombre: string;

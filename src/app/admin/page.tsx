@@ -3,6 +3,48 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { AdminSeatMap } from '@/components/admin/AdminSeatMap';
 
+interface CanjeResult {
+  control_menor: number;
+  control_mayor: number;
+  total_menor: number;
+  total_mayor: number;
+  diferencia: number;
+  diferencia_aplicada: number;
+  reglas?: {
+    aplica_funciones: number[];
+    si_diferencia_positiva: string;
+    si_diferencia_no_positiva: string;
+  };
+  updates?: Array<{ id: number; precio: number }>;
+  realizar_canje?: boolean;
+  pagos?: {
+    pagados_mayor: number;
+  };
+}
+
+interface PagoResult {
+  control: number;
+  pagadas: number;
+}
+
+interface OcupacionItem {
+  fila: string;
+  asiento: number;
+  estado: 'reservado' | 'pagado';
+  referencia: number;
+  zona: string;
+  nivel?: number;
+}
+
+interface ReservaPorControl {
+  fila: string;
+  asiento: number;
+  estado: 'reservado' | 'pagado';
+  referencia: number;
+  zona: string;
+  nivel: number;
+}
+
 export default function AdminPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -11,15 +53,15 @@ export default function AdminPage() {
   const [controlMenor, setControlMenor] = useState('');
   const [controlMayor, setControlMayor] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any | null>(null);
+  const [result, setResult] = useState<CanjeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Pago por control
   const [controlPago, setControlPago] = useState('');
-  const [pagoResultado, setPagoResultado] = useState<any | null>(null);
+  const [pagoResultado, setPagoResultado] = useState<PagoResult | null>(null);
   const [funcionMapa, setFuncionMapa] = useState<number>(1);
   const [sectionMapa, setSectionMapa] = useState<number>(1);
-  const [ocupacion, setOcupacion] = useState<any[]>([]);
+  const [ocupacion, setOcupacion] = useState<OcupacionItem[]>([]);
   const [resaltados, setResaltados] = useState<{ fila: string; asiento: number; color?: 'blue' | 'orange' }[]>([]);
   const [activeTab, setActiveTab] = useState<'canje' | 'pago' | 'mapa'>('canje');
 
@@ -34,7 +76,7 @@ export default function AdminPage() {
       if (res.ok && data.success) {
         setOcupacion(data.data || []);
       }
-    } catch (e) {
+    } catch {
       // noop
     }
   };
@@ -99,14 +141,14 @@ export default function AdminPage() {
               });
               const d = await r.json();
               if (r.ok && d.success) {
-                const arr = (d.data || []).filter((x: any) => [2,3].includes(Number(x.nivel)));
+                const arr = (d.data || []).filter((x: ReservaPorControl) => [2,3].includes(Number(x.nivel)));
                 // Elegir función 2 si existe, si no 3
-                const has2 = arr.some((x: any) => Number(x.nivel) === 2);
-                const has3 = arr.some((x: any) => Number(x.nivel) === 3);
+                const has2 = arr.some((x: ReservaPorControl) => Number(x.nivel) === 2);
+                const has3 = arr.some((x: ReservaPorControl) => Number(x.nivel) === 3);
                 const func = has2 ? 2 : (has3 ? 3 : null);
                 if (func && pickedFuncion == null) pickedFuncion = func;
                 // Elegir zona por el primer boleto encontrado
-                const zonaTxt = (arr.find((x: any) => Number(x.nivel) === (pickedFuncion ?? func))?.zona || '').toString().toLowerCase();
+                const zonaTxt = (arr.find((x: ReservaPorControl) => Number(x.nivel) === (pickedFuncion ?? func))?.zona || '').toString().toLowerCase();
                 if (pickedZona == null && zonaTxt) {
                   if (zonaTxt.includes('oro')) pickedZona = 1;
                   else if (zonaTxt.includes('plata')) pickedZona = 2;
@@ -114,7 +156,7 @@ export default function AdminPage() {
                 }
                 // Resaltar solo en la función elegida
                 const funcToUse = pickedFuncion ?? func;
-                (arr || []).filter((x: any) => Number(x.nivel) === funcToUse).forEach((x: any) => {
+                (arr || []).filter((x: ReservaPorControl) => Number(x.nivel) === funcToUse).forEach((x: ReservaPorControl) => {
                   resaltadosTmp.push({ fila: x.fila, asiento: x.asiento, color: entry.color });
                 });
               }
@@ -125,12 +167,12 @@ export default function AdminPage() {
             setResaltados(resaltadosTmp);
             // Forzar recarga de ocupación acorde a la función seleccionada
             if (pickedFuncion) await cargarOcupacion(pickedFuncion);
-          } catch (e) {
+          } catch {
             // noop de resaltado
           }
         }
       }
-    } catch (err: any) {
+    } catch {
       setError('Error de red');
     } finally {
       setLoading(false);
@@ -293,13 +335,14 @@ export default function AdminPage() {
                       if (controlMayor) ids.push(controlMayor);
                       if (controlMenor) ids.push(controlMenor);
                       const resaltadosTmp: { fila: string; asiento: number; color?: 'blue' | 'orange' }[] = [];
-                      for (const [idx, id] of ids.entries()) {
+                      for (const id of ids) {
                         const r = await fetch('/api/admin/reservas-por-control', {
                           method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-user': 'admin', 'x-admin-pass': 'Admin2025.' }, body: JSON.stringify({ control: id })
                         });
                         const d = await r.json();
                         if (r.ok && d.success) {
-                          (d.data || []).filter((x: any) => x.nivel === funcionMapa).forEach((x: any) => resaltadosTmp.push({ fila: x.fila, asiento: x.asiento, color: idx === 0 ? 'blue' : 'orange' }));
+                          const isFirst = ids.indexOf(id) === 0;
+                          (d.data || []).filter((x: ReservaPorControl) => x.nivel === funcionMapa).forEach((x: ReservaPorControl) => resaltadosTmp.push({ fila: x.fila, asiento: x.asiento, color: isFirst ? 'blue' : 'orange' }));
                         }
                       }
                       setResaltados(resaltadosTmp);
@@ -308,7 +351,7 @@ export default function AdminPage() {
                 </div>
                 <AdminSeatMap
                   section={sectionMapa}
-                  ocupados={(ocupacion || []).filter((o: any) => {
+                  ocupados={(ocupacion || []).filter((o: OcupacionItem) => {
                     const z = (o.zona || '').toString().toLowerCase();
                     if (sectionMapa === 1) return z === 'oro' || z.includes('oro');
                     if (sectionMapa === 2) return z === 'plata' || z.includes('plata');
@@ -367,7 +410,7 @@ export default function AdminPage() {
                         } else {
                           setPagoResultado(data.data);
                         }
-                      } catch (e) {
+                      } catch {
                         setError('Error de red');
                       } finally {
                         setLoading(false);
@@ -407,7 +450,7 @@ export default function AdminPage() {
                         });
                         const d = await r.json();
                         if (r.ok && d.success) {
-                          const rs = (d.data || []).filter((x: any) => x.nivel === funcionMapa).map((x: any) => ({ fila: x.fila, asiento: x.asiento, color: 'blue' as const }));
+                          const rs = (d.data || []).filter((x: ReservaPorControl) => x.nivel === funcionMapa).map((x: ReservaPorControl) => ({ fila: x.fila, asiento: x.asiento, color: 'blue' as const }));
                           setResaltados(rs);
                         }
                       }}
@@ -415,7 +458,7 @@ export default function AdminPage() {
                   </div>
                   <AdminSeatMap
                     section={sectionMapa}
-                    ocupados={(ocupacion || []).filter((o: any) => {
+                    ocupados={(ocupacion || []).filter((o: OcupacionItem) => {
                       const z = (o.zona || '').toString().toLowerCase();
                       if (sectionMapa === 1) return z === 'oro' || z.includes('oro');
                       if (sectionMapa === 2) return z === 'plata' || z.includes('plata');
@@ -455,7 +498,7 @@ export default function AdminPage() {
                   </div>
                   <AdminSeatMap
                     section={sectionMapa}
-                    ocupados={(ocupacion || []).filter((o: any) => {
+                    ocupados={(ocupacion || []).filter((o: OcupacionItem) => {
                       const z = (o.zona || '').toString().toLowerCase();
                       if (sectionMapa === 1) return z === 'oro' || z.includes('oro');
                       if (sectionMapa === 2) return z === 'plata' || z.includes('plata');

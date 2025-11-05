@@ -6,7 +6,8 @@ import { isPaymentDatePassed } from '@/lib/utils/paymentDates';
  * Endpoint para liberar automáticamente asientos cuya fecha de pago ya pasó
  * Este endpoint puede ser llamado periódicamente por un cron job o manualmente
  */
-export async function POST(request: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function POST(_request: NextRequest) {
   try {
     const supabase = getSupabaseClient();
     
@@ -109,7 +110,8 @@ export async function POST(request: NextRequest) {
  * Endpoint GET para verificar cuántas reservas están pendientes de liberación
  * Útil para monitoreo sin realizar la liberación
  */
-export async function GET(request: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function GET(_request: NextRequest) {
   try {
     const supabase = getSupabaseClient();
     

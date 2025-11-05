@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useReservas } from '@/hooks/useReservas';
-import { Asiento, SectionConfig } from '@/types';
+import { Asiento, SectionConfig, HermanosData } from '@/types';
 import { PaymentDateModal } from './PaymentDateModal';
 
 interface SeatingSectionProps {
@@ -110,7 +110,7 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
     console.log('🚨 SeatingSection useEffect - hermanos length:', hermanos.length);
     
     // Convertir ambos a string para comparación (alumnoRef puede ser número, control puede ser string)
-    const alumnoActual = hermanos.find((h: any) => String(h.control) === String(alumnoRef));
+    const alumnoActual = hermanos.find((h: HermanosData) => String(h.control) === String(alumnoRef));
     console.log('🚨 SeatingSection useEffect - alumnoActual encontrado:', alumnoActual);
     
     if (alumnoActual) {
@@ -127,7 +127,7 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
     } else {
       console.log('🔍 SeatingSection useEffect - Alumno no encontrado, usando nivel 1 por defecto');
       console.log('🚨 SeatingSection useEffect - ESTABLECIENDO NIVEL POR DEFECTO: 1');
-      console.log('🚨 SeatingSection useEffect - DEBUG: Buscando control', alumnoRef, 'en hermanos:', hermanos.map((h: any) => h.control));
+      console.log('🚨 SeatingSection useEffect - DEBUG: Buscando control', alumnoRef, 'en hermanos:', hermanos.map((h: HermanosData) => h.control));
       setAlumnoNivel(1);
     }
   }, [alumnoRef]);

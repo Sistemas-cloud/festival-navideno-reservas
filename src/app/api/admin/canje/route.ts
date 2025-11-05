@@ -73,7 +73,6 @@ export async function POST(req: NextRequest) {
     // Preparar actualizaciones
     let updates: Array<{ id: number; precio: number }>; 
     if (diferencia > 0) {
-      const firstId = ordenMayor[0].id as number;
       updates = ordenMayor.map((r, idx) => ({ id: r.id as number, precio: idx === 0 ? diferencia : 0 }));
     } else {
       updates = ordenMayor.map((r) => ({ id: r.id as number, precio: 0 }));
@@ -128,8 +127,9 @@ export async function POST(req: NextRequest) {
         pagos,
       }
     });
-  } catch (e: any) {
-    return NextResponse.json({ success: false, message: 'Error inesperado', detail: e?.message }, { status: 500 });
+  } catch (e) {
+    const errorMessage = e instanceof Error ? e.message : 'Error desconocido';
+    return NextResponse.json({ success: false, message: 'Error inesperado', detail: errorMessage }, { status: 500 });
   }
 }
 

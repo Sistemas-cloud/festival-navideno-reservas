@@ -313,23 +313,9 @@ export class ReservaModel {
               .single();
             
             if (!alumnoError && alumno) {
-              // Obtener familia del alumno
-              const { data: familia, error: familiaError } = await supabase
-                .from('alumno_familiar')
-                .select('familiar_cel, familiar_curp')
-                .eq('alumno_id', alumno.alumno_id)
-                .in('tutor_id', [1, 2])
-                .limit(1)
-                .single();
-              
-              // Verificar si esta familia ya tiene reservas con esta fecha
-              const familiaId = familia && !familiaError 
-                ? (familia.familiar_cel || familia.familiar_curp || `REF_${alumnoRef}`)
-                : `REF_${alumnoRef}`;
-              
               // Buscar si hay otras reservas de esta familia con esta fecha
               const hermanosIds = await this.getHermanosIds(alumno.alumno_id);
-              const { data: reservasFamiliaMismaFecha, error: checkError } = await supabase
+              const { data: reservasFamiliaMismaFecha } = await supabase
                 .from('reservas')
                 .select('referencia')
                 .in('referencia', hermanosIds)
