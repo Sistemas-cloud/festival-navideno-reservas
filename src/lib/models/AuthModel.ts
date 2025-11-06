@@ -176,10 +176,10 @@ export class AuthModel {
       // Información sobre boletos disponibles
       console.log('\n🎫 ===== INFORMACIÓN DE BOLETOS =====');
       console.log('📋 Secciones disponibles para reserva:');
-      console.log('  👑 ZONA ORO - Desde $180');
-      console.log('  🥈 ZONA PLATA - Desde $160');
-      console.log('  🏛️ BRONCE PALCOS - Desde $120');
-      console.log('  🏛️ BRONCE BALCÓN - Desde $120');
+      console.log('  👑 ZONA ORO - Desde $200');
+      console.log('  🥈 ZONA PLATA - Desde $180');
+      console.log('  🏛️ BRONCE PALCOS - Desde $140');
+      console.log('  🏛️ BRONCE BALCÓN - Desde $140');
       
       // Validaciones de fechas
       const today = new Date();

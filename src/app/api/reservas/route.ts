@@ -119,35 +119,35 @@ export async function GET(request: NextRequest) {
         switch (reserva.zoi) {
           case 'OF': // Oro Frente
             seccion = 'ZONA ORO';
-            precio = precio || 180;
+            precio = precio || 200;
             break;
           case 'OP': // Oro Palcos
             seccion = 'ZONA ORO PALCOS';
-            precio = precio || 180;
+            precio = precio || 200;
             break;
           case 'PF': // Plata Frente
             seccion = 'ZONA PLATA';
-            precio = precio || 160;
+            precio = precio || 180;
             break;
           case 'PP': // Plata Palcos
             seccion = 'ZONA PLATA PALCOS';
-            precio = precio || 160;
+            precio = precio || 180;
             break;
           case 'BF': // Bronce Frente
             seccion = 'BRONCE PALCOS';
-            precio = precio || 120;
+            precio = precio || 140;
             break;
           case 'BB': // Bronce Balcón
             seccion = 'BRONCE BALCÓN';
-            precio = precio || 120;
+            precio = precio || 140;
             break;
           default:
             // Si no reconocemos el código, determinar por precio
-            if (precio >= 180) {
+            if (precio >= 200) {
               seccion = 'ZONA ORO';
-            } else if (precio >= 160) {
+            } else if (precio >= 180) {
               seccion = 'ZONA PLATA';
-            } else if (precio >= 120) {
+            } else if (precio >= 140) {
               seccion = 'BRONCE PALCOS';
             } else {
               seccion = 'ZONA GENERAL';
@@ -155,11 +155,11 @@ export async function GET(request: NextRequest) {
         }
       } else {
         // Si no hay zoi, determinar por precio
-        if (precio >= 180) {
+        if (precio >= 200) {
           seccion = 'ZONA ORO';
-        } else if (precio >= 160) {
+        } else if (precio >= 180) {
           seccion = 'ZONA PLATA';
-        } else if (precio >= 120) {
+        } else if (precio >= 140) {
           seccion = 'BRONCE PALCOS';
         } else {
           seccion = 'ZONA GENERAL';

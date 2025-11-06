@@ -40,9 +40,9 @@ export function hasEarlyAccess(control: number): boolean {
  * El sistema estará cerrado para el público hasta estas fechas
  */
 export const OPENING_DATES = {
-  FUNCION_1: new Date('2025-12-01'),
-  FUNCION_2: new Date('2025-12-04'),
-  FUNCION_3: new Date('2025-12-08')
+  FUNCION_1: new Date('2025-11-07'),
+  FUNCION_2: new Date('2025-11-08'),
+  FUNCION_3: new Date('2025-11-09')
 };
 
 /**

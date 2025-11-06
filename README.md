@@ -7,10 +7,10 @@ Sistema moderno de reserva de boletos para eventos navideños escolares, desarro
 - **Autenticación segura** con número de control y contraseña
 - **Gestión de hermanos** automática basada en datos familiares
 - **Reserva de asientos** en 4 secciones diferentes:
-  - 🥇 Oro ($180.00)
-  - 🥈 Plata ($160.00) 
-  - 🥉 Bronce Palcos ($120.00)
-  - 🎭 Bronce Balcón ($120.00)
+  - 🥇 Oro ($200.00)
+  - 🥈 Plata ($180.00) 
+  - 🥉 Bronce Palcos ($140.00)
+  - 🎭 Bronce Balcón ($140.00)
 - **Control de fechas** por nivel escolar
 - **Interfaz moderna** con Tailwind CSS
 - **Responsive design** para todos los dispositivos

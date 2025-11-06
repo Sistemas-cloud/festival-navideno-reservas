@@ -494,7 +494,7 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-white/80 text-xs font-medium uppercase tracking-wide">Desde</p>
-                  <p className="text-white font-bold text-3xl">$180</p>
+                  <p className="text-white font-bold text-3xl">$200</p>
                 </div>
               </div>
               <h3 className="text-white font-bold text-2xl mb-3 tracking-tight">ZONA ORO</h3>
@@ -526,7 +526,7 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-white/80 text-xs font-medium uppercase tracking-wide">Desde</p>
-                  <p className="text-white font-bold text-3xl">$160</p>
+                  <p className="text-white font-bold text-3xl">$180</p>
                 </div>
               </div>
               <h3 className="text-white font-bold text-2xl mb-3 tracking-tight">ZONA PLATA</h3>
@@ -558,7 +558,7 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-white/80 text-xs font-medium uppercase tracking-wide">Desde</p>
-                  <p className="text-white font-bold text-3xl">$120</p>
+                  <p className="text-white font-bold text-3xl">$140</p>
                 </div>
               </div>
               <h3 className="text-white font-bold text-2xl mb-3 tracking-tight">BRONCE PALCOS</h3>
@@ -590,7 +590,7 @@ export const Dashboard: React.FC = () => {
                 </div>
                 <div className="text-right">
                   <p className="text-white/80 text-xs font-medium uppercase tracking-wide">Desde</p>
-                  <p className="text-white font-bold text-3xl">$120</p>
+                  <p className="text-white font-bold text-3xl">$140</p>
                 </div>
               </div>
               <h3 className="text-white font-bold text-2xl mb-3 tracking-tight">BRONCE BALCÓN</h3>

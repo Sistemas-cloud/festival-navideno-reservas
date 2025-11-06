@@ -17,7 +17,7 @@ const sectionConfigs: { [key: number]: SectionConfig } = {
   1: { // Oro - Disposición en abanico con escenario arriba
     name: 'ORO',
     color: 'oro',
-    price: 180.00,
+    price: 200.00,
     rows: { 
       A: 10,  // Fila más cercana al escenario (arriba)
       B: 19,  // Segunda fila
@@ -34,7 +34,7 @@ const sectionConfigs: { [key: number]: SectionConfig } = {
   2: { // Plata
     name: 'PLATA',
     color: 'plata',
-    price: 160.00,
+    price: 180.00,
     rows: { J: 31, K: 37, L: 37, M: 37, N: 37, O: 37, P: 37, Q: 45, R: 45, S: 45, T: 45, U: 45, V: 39, W: 42 },
     disabledSeats: [
       { row: 'J', seat: 1 }, { row: 'J', seat: 2 }, { row: 'J', seat: 3 }, { row: 'J', seat: 4 }, { row: 'J', seat: 5 },
@@ -44,14 +44,14 @@ const sectionConfigs: { [key: number]: SectionConfig } = {
   3: { // Bronce Palcos
     name: 'BRONCE (PALCOS)',
     color: 'bronce',
-    price: 120.00,
+    price: 140.00,
     rows: { II: 5, HH: 12, JJ: 12, KK: 5 },
     specialLayout: true
   },
   4: { // Bronce Balcón
     name: 'BRONCE (BALCÓN)',
     color: 'bronce',
-    price: 120.00,
+    price: 140.00,
     rows: { II: 5, HH: 12, JJ: 12, KK: 5 },
     specialLayout: true
   }
