@@ -1,7 +1,7 @@
 import { getSupabaseClient } from '../supabase';
 import { validateInternalUser } from '../config/internalUsers';
 import { hasEarlyAccess, getOpeningDateForFunction } from '../config/earlyAccess';
-import { getTodayInMonterrey, parseDateString, isBeforeOpeningDate } from '../utils/timezone';
+import { getTodayInMonterrey, parseDateString } from '../utils/timezone';
 
 interface HermanoData {
   nombre: string;

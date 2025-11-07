@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
     
-    const hermanosData = authResult.data || [];
+    const hermanosData = Array.isArray(authResult.data) ? authResult.data : [];
     
     console.log('✅ API Login - Login exitoso');
     console.log('📊 API Login - hermanosData:', hermanosData);
