@@ -40,7 +40,15 @@ export async function POST(request: NextRequest) {
     const authModel = new AuthModel();
     const authResult = await authModel.authenticate(parseInt(alumno_ref), clave);
     
+    console.log('🔍 API Login - authResult.success:', authResult.success);
+    console.log('🔍 API Login - authResult.isAccessDeniedByDate:', authResult.isAccessDeniedByDate);
+    console.log('🔍 API Login - authResult.message:', authResult.message);
+    console.log('🔍 API Login - authResult.data:', authResult.data);
+    console.log('🔍 API Login - authResult.data es array?', Array.isArray(authResult.data));
+    console.log('🔍 API Login - authResult.data length:', Array.isArray(authResult.data) ? authResult.data.length : 'N/A');
+    
     if (!authResult.success) {
+      console.log('❌ API Login - Autenticación fallida, retornando error');
       return NextResponse.json({
         success: false,
         message: authResult.message || 'Error en autenticación',
@@ -51,8 +59,12 @@ export async function POST(request: NextRequest) {
     }
     
     const hermanosData = authResult.data || [];
-
-    console.log('✅ Login exitoso');
+    
+    console.log('✅ API Login - Login exitoso');
+    console.log('📊 API Login - hermanosData:', hermanosData);
+    console.log('📊 API Login - hermanosData.length:', hermanosData.length);
+    console.log('📊 API Login - isInternal:', authResult.isInternal);
+    console.log('📊 API Login - funcionAsignada:', authResult.funcionAsignada);
     
     // Incluir información de usuario interno en la respuesta
     return NextResponse.json({

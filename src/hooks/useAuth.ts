@@ -118,7 +118,23 @@ export const useAuth = () => {
 
       const result = await response.json();
 
-      if (result.success && result.data) {
+      // Debug: Log completo de la respuesta
+      console.log('🔍 useAuth - Respuesta completa del servidor:', result);
+      console.log('🔍 useAuth - result.success:', result.success);
+      console.log('🔍 useAuth - result.data:', result.data);
+      console.log('🔍 useAuth - result.data es array?', Array.isArray(result.data));
+      console.log('🔍 useAuth - result.data length:', Array.isArray(result.data) ? result.data.length : 'N/A');
+      console.log('🔍 useAuth - result.isAccessDeniedByDate:', result.isAccessDeniedByDate);
+      console.log('🔍 useAuth - result.message:', result.message);
+
+      if (result.success) {
+        // Verificar que result.data existe y es un array (puede estar vacío pero debe existir)
+        if (!result.data || !Array.isArray(result.data)) {
+          console.error('❌ useAuth - result.data no es un array válido:', result.data);
+          alert('Error: Datos de usuario inválidos. Por favor, intenta nuevamente.');
+          return { success: false };
+        }
+
         // Obtener nombre del primer hermano (usuario actual)
         const primerHermano = result.data[0];
         const nombreCompleto = primerHermano?.nombre || '';
@@ -145,6 +161,8 @@ export const useAuth = () => {
         setUserData(newUserData);
         setIsAuthenticated(true);
         
+        console.log('✅ useAuth - Login exitoso, redirigiendo...');
+        
         // Forzar navegación y refresh
         setTimeout(() => {
           router.push('/');
@@ -162,6 +180,7 @@ export const useAuth = () => {
       } else {
         // Retornar información detallada del error
         if (result.isAccessDeniedByDate) {
+          console.log('🚫 useAuth - Acceso denegado por fecha');
           return {
             success: false,
             errorInfo: {
@@ -173,6 +192,7 @@ export const useAuth = () => {
           };
         }
         // Para otros errores, mostrar alert normal
+        console.error('❌ useAuth - Error en login:', result.message);
         alert(result.message || 'Error en el login');
         return { success: false };
       }
