@@ -21,7 +21,7 @@ function validateUserAccess(userData: UserData): boolean {
 
   // Obtener el alumno actual de la lista de hermanos
   const alumnoActual = userData.hermanos?.find(
-    (h: HermanosData) => h.control === userData.alumnoRef
+    (h: HermanosData) => String(h.control) === String(userData.alumnoRef)
   );
 
   if (!alumnoActual) {
@@ -49,7 +49,8 @@ function validateUserAccess(userData: UserData): boolean {
   }
 
   // Para funciones 2 y 3, verificar acceso anticipado o fecha de apertura
-  const tieneAccesoAnticipado = hasEarlyAccess(userData.alumnoRef);
+  const controlNumber = Number(userData.alumnoRef);
+  const tieneAccesoAnticipado = hasEarlyAccess(controlNumber);
   const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
 
   // Solo denegar acceso si NO tiene acceso anticipado Y la fecha actual es ANTES de la fecha de apertura
