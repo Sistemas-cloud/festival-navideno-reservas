@@ -249,18 +249,28 @@ export class AuthModel {
       // Las funciones 2 y 3 mantienen sus restricciones de fecha
       // Nota: 'today' ya fue declarado arriba en la línea 198
       
+      console.log(`🔍 AuthModel - Validando acceso para función ${funcionNum} (${nombreFuncion})`);
+      console.log(`🔍 AuthModel - alumnoRef: ${alumnoRef}, nivel: ${nivel}, grado: ${grado}`);
+      
       // Si es función 1, siempre permitir acceso (sin restricción de fecha)
       if (funcionNum === 1) {
         console.log(`✅ Acceso permitido: Función 1 siempre está abierta (sin restricción de fecha)`);
       } else {
         // Para funciones 2 y 3, verificar acceso anticipado o fecha de apertura
         const tieneAccesoAnticipado = hasEarlyAccess(alumnoRef);
+        console.log(`🔍 AuthModel - tieneAccesoAnticipado: ${tieneAccesoAnticipado} para control ${alumnoRef}`);
+        
         const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
         const fechaApertura = parseDateString(fechaAperturaStr);
+        
+        console.log(`🔍 AuthModel - fechaAperturaStr: ${fechaAperturaStr}`);
+        console.log(`🔍 AuthModel - fechaApertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
+        console.log(`🔍 AuthModel - today: ${today.toLocaleDateString('es-MX')}`);
         
         // Solo denegar acceso si NO tiene acceso anticipado Y la fecha actual es ANTES de la fecha de apertura
         // Si la fecha es igual o posterior, permitir acceso
         const fechaAunNoHaPasado = today.getTime() < fechaApertura.getTime();
+        console.log(`🔍 AuthModel - fechaAunNoHaPasado: ${fechaAunNoHaPasado}`);
         
         if (!tieneAccesoAnticipado && fechaAunNoHaPasado) {
           const fechaAperturaFormateada = fechaApertura.toLocaleDateString('es-MX', {
@@ -298,6 +308,10 @@ export class AuthModel {
       }
       
       console.log('=====================================\n');
+      console.log('✅ AuthModel - Autenticación exitosa, retornando datos');
+      console.log('📊 AuthModel - hermanosData:', hermanosData);
+      console.log('📊 AuthModel - hermanosData.length:', hermanosData?.length || 0);
+      console.log('📊 AuthModel - hermanosData es array?', Array.isArray(hermanosData));
       
       return {
         success: true,
