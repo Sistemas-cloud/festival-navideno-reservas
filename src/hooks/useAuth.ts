@@ -2,7 +2,58 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserData } from '@/types';
+import { UserData, HermanosData } from '@/types';
+import { hasEarlyAccess, getOpeningDateForFunction } from '@/lib/config/earlyAccess';
+import { isBeforeOpeningDate } from '@/lib/utils/timezone';
+
+/**
+ * Valida si un usuario tiene acceso al sistema basándose en:
+ * - Si es usuario interno (siempre tiene acceso)
+ * - Si tiene acceso anticipado
+ * - Si la fecha de apertura ya pasó
+ */
+function validateUserAccess(userData: UserData): boolean {
+  // Usuarios internos siempre tienen acceso
+  if (userData.isInternal) {
+    console.log('✅ Validación de acceso: Usuario interno - acceso permitido');
+    return true;
+  }
+
+  // Obtener el alumno actual de la lista de hermanos
+  const alumnoActual = userData.hermanos?.find(
+    (h: HermanosData) => h.control === userData.alumnoRef
+  );
+
+  if (!alumnoActual) {
+    console.warn('⚠️ Validación de acceso: No se encontró el alumno actual en la lista de hermanos');
+    return false;
+  }
+
+  const { nivel, grado } = alumnoActual;
+
+  // Calcular función numérica para validación de acceso anticipado
+  let funcionNum = 3; // Por defecto
+  if (nivel === 1 || nivel === 2 || (nivel === 3 && grado === 1)) {
+    funcionNum = 1;
+  } else if (nivel === 3 && grado >= 2 && grado <= 5) {
+    funcionNum = 2;
+  } else if (nivel === 3 && grado === 6 || nivel === 4) {
+    funcionNum = 3;
+  }
+
+  // Verificar acceso anticipado
+  const tieneAccesoAnticipado = hasEarlyAccess(userData.alumnoRef);
+  const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
+
+  // Si no tiene acceso anticipado y aún no ha llegado la fecha de apertura, denegar acceso
+  if (!tieneAccesoAnticipado && isBeforeOpeningDate(fechaAperturaStr)) {
+    console.log(`🚫 Validación de acceso: Usuario ${userData.alumnoRef} no tiene acceso - fecha de apertura: ${fechaAperturaStr}`);
+    return false;
+  }
+
+  console.log(`✅ Validación de acceso: Usuario ${userData.alumnoRef} tiene acceso permitido`);
+  return true;
+}
 
 export const useAuth = () => {
   const router = useRouter();
@@ -15,18 +66,32 @@ export const useAuth = () => {
     const storedData = localStorage.getItem('userData');
     if (storedData) {
       try {
-        const parsedData = JSON.parse(storedData);
+        const parsedData: UserData = JSON.parse(storedData);
         
         // Debug: Log de datos cargados desde localStorage
         console.log('🔍 useAuth Debug - Datos cargados desde localStorage:', parsedData);
         console.log('👥 useAuth Debug - hermanos cargados:', parsedData.hermanos);
         console.log('📏 useAuth Debug - hermanos.length:', parsedData.hermanos?.length);
         
+        // VALIDAR ACCESO: Verificar si el usuario todavía tiene acceso
+        const tieneAcceso = validateUserAccess(parsedData);
+        
+        if (!tieneAcceso) {
+          console.log('🚫 useAuth: Usuario no tiene acceso - limpiando localStorage y cerrando sesión');
+          localStorage.removeItem('userData');
+          setUserData(null);
+          setIsAuthenticated(false);
+          return;
+        }
+        
+        // Si tiene acceso, establecer los datos
         setUserData(parsedData);
         setIsAuthenticated(true);
       } catch (error) {
         console.error('Error al parsear datos de usuario:', error);
         localStorage.removeItem('userData');
+        setUserData(null);
+        setIsAuthenticated(false);
       }
     }
   }, []);
