@@ -245,41 +245,48 @@ export class AuthModel {
       }
       
       // VALIDACIÓN DE ACCESO ANTICIPADO
-      // Verificar si el usuario tiene acceso anticipado o si la fecha de apertura ya pasó
-      // La fecha de apertura se verifica usando la hora de Monterrey
+      // IMPORTANTE: La función 1 NO tiene restricción de fecha - siempre está abierta
+      // Las funciones 2 y 3 mantienen sus restricciones de fecha
       // Nota: 'today' ya fue declarado arriba en la línea 198
-      const tieneAccesoAnticipado = hasEarlyAccess(alumnoRef);
-      const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
-      const fechaApertura = parseDateString(fechaAperturaStr);
       
-      // Solo denegar acceso si NO tiene acceso anticipado Y la fecha actual es ANTES de la fecha de apertura
-      // Si la fecha es igual o posterior, permitir acceso
-      const fechaAunNoHaPasado = today.getTime() < fechaApertura.getTime();
-      
-      if (!tieneAccesoAnticipado && fechaAunNoHaPasado) {
-        const fechaAperturaFormateada = fechaApertura.toLocaleDateString('es-MX', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          timeZone: 'America/Monterrey'
-        });
-        console.log(`🚫 Acceso denegado: El sistema estará disponible a partir del ${fechaAperturaFormateada} (medianoche hora de Monterrey) para la ${nombreFuncion}`);
-        console.log(`📅 Fecha actual en Monterrey: ${today.toLocaleDateString('es-MX')}, Fecha de apertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
-        return {
-          success: false,
-          message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} (medianoche hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha.`,
-          isAccessDeniedByDate: true,
-          fechaApertura: fechaAperturaStr,
-          nombreFuncion: nombreFuncion
-        };
-      }
-      
-      // Log de acceso permitido
-      if (tieneAccesoAnticipado) {
-        console.log(`✅ Acceso anticipado concedido para control ${alumnoRef}`);
+      // Si es función 1, siempre permitir acceso (sin restricción de fecha)
+      if (funcionNum === 1) {
+        console.log(`✅ Acceso permitido: Función 1 siempre está abierta (sin restricción de fecha)`);
       } else {
-        console.log(`✅ Acceso permitido: Fecha de apertura (${fechaAperturaStr}) ya pasó o es hoy`);
-        console.log(`📅 Fecha actual en Monterrey: ${today.toLocaleDateString('es-MX')}, Fecha de apertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
+        // Para funciones 2 y 3, verificar acceso anticipado o fecha de apertura
+        const tieneAccesoAnticipado = hasEarlyAccess(alumnoRef);
+        const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
+        const fechaApertura = parseDateString(fechaAperturaStr);
+        
+        // Solo denegar acceso si NO tiene acceso anticipado Y la fecha actual es ANTES de la fecha de apertura
+        // Si la fecha es igual o posterior, permitir acceso
+        const fechaAunNoHaPasado = today.getTime() < fechaApertura.getTime();
+        
+        if (!tieneAccesoAnticipado && fechaAunNoHaPasado) {
+          const fechaAperturaFormateada = fechaApertura.toLocaleDateString('es-MX', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            timeZone: 'America/Monterrey'
+          });
+          console.log(`🚫 Acceso denegado: El sistema estará disponible a partir del ${fechaAperturaFormateada} (medianoche hora de Monterrey) para la ${nombreFuncion}`);
+          console.log(`📅 Fecha actual en Monterrey: ${today.toLocaleDateString('es-MX')}, Fecha de apertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
+          return {
+            success: false,
+            message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} (medianoche hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha.`,
+            isAccessDeniedByDate: true,
+            fechaApertura: fechaAperturaStr,
+            nombreFuncion: nombreFuncion
+          };
+        }
+        
+        // Log de acceso permitido para funciones 2 y 3
+        if (tieneAccesoAnticipado) {
+          console.log(`✅ Acceso anticipado concedido para control ${alumnoRef}`);
+        } else {
+          console.log(`✅ Acceso permitido: Fecha de apertura (${fechaAperturaStr}) ya pasó o es hoy`);
+          console.log(`📅 Fecha actual en Monterrey: ${today.toLocaleDateString('es-MX')}, Fecha de apertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
+        }
       }
       
       if (today >= fechaCierre) {

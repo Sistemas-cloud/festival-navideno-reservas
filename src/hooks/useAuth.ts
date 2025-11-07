@@ -41,7 +41,14 @@ function validateUserAccess(userData: UserData): boolean {
     funcionNum = 3;
   }
 
-  // Verificar acceso anticipado
+  // IMPORTANTE: La función 1 NO tiene restricción de fecha - siempre está abierta
+  // Las funciones 2 y 3 mantienen sus restricciones de fecha
+  if (funcionNum === 1) {
+    console.log(`✅ Validación de acceso: Función 1 siempre está abierta (sin restricción de fecha)`);
+    return true;
+  }
+
+  // Para funciones 2 y 3, verificar acceso anticipado o fecha de apertura
   const tieneAccesoAnticipado = hasEarlyAccess(userData.alumnoRef);
   const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
 
