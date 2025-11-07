@@ -1,5 +1,92 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ReservaModel } from '@/lib/models/ReservaModel';
+import { isInternalUser } from '@/lib/config/internalUsers';
+import { hasEarlyAccess, getOpeningDateForFunction } from '@/lib/config/earlyAccess';
+import { isBeforeOpeningDate } from '@/lib/utils/timezone';
+import { getSupabaseClient } from '@/lib/supabase';
+
+/**
+ * Valida si un usuario tiene acceso para crear reservas
+ * Solo permite reservar si:
+ * - Es usuario interno, O
+ * - Tiene acceso anticipado, O
+ * - La fecha de apertura ya pasó
+ */
+async function validateReservationAccess(alumnoRef: number): Promise<{ 
+  hasAccess: boolean; 
+  message?: string;
+  fechaApertura?: string;
+  nombreFuncion?: string;
+}> {
+  // Usuarios internos siempre tienen acceso
+  if (isInternalUser(alumnoRef)) {
+    console.log(`✅ Validación de acceso para reservar: Usuario interno ${alumnoRef} - acceso permitido`);
+    return { hasAccess: true };
+  }
+
+  // Obtener datos del alumno para calcular la función
+  const supabase = getSupabaseClient();
+  const { data: alumno, error: alumnoError } = await supabase
+    .from('alumno')
+    .select('alumno_nivel, alumno_grado')
+    .eq('alumno_ref', alumnoRef)
+    .single();
+
+  if (alumnoError || !alumno) {
+    console.error('❌ Error al obtener datos del alumno para validación:', alumnoError);
+    return { 
+      hasAccess: false, 
+      message: 'Error al validar acceso. Por favor, intenta nuevamente.' 
+    };
+  }
+
+  const { alumno_nivel: nivel, alumno_grado: grado } = alumno;
+
+  // Calcular función numérica para validación de acceso anticipado
+  let funcionNum = 3; // Por defecto
+  if (nivel === 1 || nivel === 2 || (nivel === 3 && grado === 1)) {
+    funcionNum = 1;
+  } else if (nivel === 3 && grado >= 2 && grado <= 5) {
+    funcionNum = 2;
+  } else if (nivel === 3 && grado === 6 || nivel === 4) {
+    funcionNum = 3;
+  }
+
+  // Verificar acceso anticipado
+  const tieneAccesoAnticipado = hasEarlyAccess(alumnoRef);
+  const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
+
+  // Si no tiene acceso anticipado y aún no ha llegado la fecha de apertura, denegar acceso
+  if (!tieneAccesoAnticipado && isBeforeOpeningDate(fechaAperturaStr)) {
+    const nombresFunciones: { [key: number]: string } = {
+      1: '1ra Función',
+      2: '2da Función',
+      3: '3ra Función'
+    };
+    const nombreFuncion = nombresFunciones[funcionNum] || 'Función';
+    
+    // Formatear fecha de apertura para el mensaje
+    const [year, month, day] = fechaAperturaStr.split('-').map(Number);
+    const fechaApertura = new Date(year, month - 1, day);
+    const fechaAperturaFormateada = fechaApertura.toLocaleDateString('es-MX', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'America/Monterrey'
+    });
+
+    console.log(`🚫 Validación de acceso para reservar: Usuario ${alumnoRef} NO tiene acceso - fecha de apertura: ${fechaAperturaStr}`);
+    return {
+      hasAccess: false,
+      message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} (medianoche hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha.`,
+      fechaApertura: fechaAperturaStr,
+      nombreFuncion: nombreFuncion
+    };
+  }
+
+  console.log(`✅ Validación de acceso para reservar: Usuario ${alumnoRef} tiene acceso permitido`);
+  return { hasAccess: true };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,10 +100,24 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    const alumnoRefNum = parseInt(alumno_ref);
+
+    // VALIDAR ACCESO ANTICIPADO: Solo permitir reservar si tiene acceso
+    const validacionAcceso = await validateReservationAccess(alumnoRefNum);
+    if (!validacionAcceso.hasAccess) {
+      return NextResponse.json({
+        success: false,
+        message: validacionAcceso.message || 'No tienes acceso para realizar reservas en este momento.',
+        isAccessDeniedByDate: true,
+        fechaApertura: validacionAcceso.fechaApertura,
+        nombreFuncion: validacionAcceso.nombreFuncion
+      }, { status: 403 });
+    }
+
     const reservaModel = new ReservaModel();
     
     // Validar si el portal está cerrado para este alumno
-    const validacionCierre = await reservaModel.isPortalCerrado(parseInt(alumno_ref));
+    const validacionCierre = await reservaModel.isPortalCerrado(alumnoRefNum);
     if (validacionCierre.cerrado) {
       return NextResponse.json({
         success: false,

@@ -95,7 +95,15 @@ export const useReservas = (alumnoRef: number) => {
         await fetchReservas();
         return true;
       } else {
-        alert(result.message || 'Error al crear la reserva');
+        // Si el acceso fue denegado por fecha, mostrar mensaje específico
+        if (result.isAccessDeniedByDate) {
+          alert(result.message || 'No tienes acceso para realizar reservas en este momento.');
+          // Opcional: limpiar sesión si el acceso fue denegado
+          // localStorage.removeItem('userData');
+          // window.location.reload();
+        } else {
+          alert(result.message || 'Error al crear la reserva');
+        }
         return false;
       }
     } catch (error) {
