@@ -739,101 +739,44 @@ export class ReservaModel {
   }
 
   /**
-   * Cuenta el número de familias únicas que ya tienen reservas con una fecha de pago específica
-   * Una familia se identifica por familiar_cel o familiar_curp
-   * Optimizado para hacer consultas en batch
+   * Cuenta el número de referencias únicas (clientes) que ya tienen reservas con una fecha de pago específica
+   * Cada referencia en la tabla de reservas representa a un alumno/familia que realizará el pago
    */
   async contarFamiliasPorFechaPago(funcion: number, fechaPago: string): Promise<number> {
     try {
       const supabase = getSupabaseClient();
-      
-      // Obtener todas las reservas con esta fecha de pago y función
-      const { data: reservas, error: reservasError } = await supabase
+
+      const { data: reservas, error } = await supabase
         .from('reservas')
         .select('referencia')
         .eq('nivel', funcion)
         .eq('fecha_pago', fechaPago)
         .in('estado', ['reservado', 'pagado']);
 
-      if (reservasError) {
-        console.error('Error al obtener reservas para contar familias:', reservasError);
+      if (error) {
+        console.error('Error al obtener reservas para contar familias:', error);
         return 0;
       }
 
       if (!reservas || reservas.length === 0) {
+        console.log(`🔍 contarFamiliasPorFechaPago - 0 referencias para función ${funcion}, fecha ${fechaPago}`);
         return 0;
       }
 
-      // Obtener referencias únicas (alumnos)
-      const referenciasUnicas = Array.from(new Set(reservas.map(r => r.referencia)));
-      console.log(`🔍 contarFamiliasPorFechaPago - ${referenciasUnicas.length} alumnos únicos con fecha ${fechaPago}`);
+      const referenciasUnicas = new Set<number>();
 
-      if (referenciasUnicas.length === 0) {
-        return 0;
-      }
-
-      // Obtener todos los alumnos de una vez
-      const { data: alumnos, error: alumnosError } = await supabase
-        .from('alumno')
-        .select('alumno_id, alumno_ref')
-        .in('alumno_ref', referenciasUnicas);
-
-      if (alumnosError || !alumnos) {
-        console.error('Error al obtener alumnos:', alumnosError);
-        return 0;
-      }
-
-      // Crear mapa de referencia -> alumno_id
-      const referenciaToAlumnoId = new Map<number, number>();
-      alumnos.forEach(alumno => {
-        referenciaToAlumnoId.set(alumno.alumno_ref, alumno.alumno_id);
-      });
-
-      // Obtener todos los datos de familia de una vez
-      const alumnoIds = Array.from(referenciaToAlumnoId.values());
-      const { data: familias, error: familiasError } = await supabase
-        .from('alumno_familiar')
-        .select('alumno_id, familiar_cel, familiar_curp')
-        .in('alumno_id', alumnoIds)
-        .in('tutor_id', [1, 2]);
-
-      if (familiasError) {
-        console.error('Error al obtener familias:', familiasError);
-        // Fallback: contar por referencia
-        return referenciasUnicas.length;
-      }
-
-      // Crear mapa de alumno_id -> familia_id
-      const alumnoIdToFamiliaId = new Map<number, string>();
-      if (familias) {
-        familias.forEach(familia => {
-          const familiaId = familia.familiar_cel || familia.familiar_curp;
-          if (familiaId && !alumnoIdToFamiliaId.has(familia.alumno_id)) {
-            alumnoIdToFamiliaId.set(familia.alumno_id, familiaId);
+      reservas.forEach(reserva => {
+        const referencia = reserva?.referencia;
+        if (referencia !== null && referencia !== undefined) {
+          const referenciaNum = Number(referencia);
+          if (!Number.isNaN(referenciaNum)) {
+            referenciasUnicas.add(referenciaNum);
           }
-        });
-      }
-
-      // Identificar familias únicas
-      const familiasUnicas = new Set<string>();
-      referenciasUnicas.forEach(referencia => {
-        const alumnoId = referenciaToAlumnoId.get(referencia);
-        if (alumnoId) {
-          const familiaId = alumnoIdToFamiliaId.get(alumnoId);
-          if (familiaId) {
-            familiasUnicas.add(familiaId);
-          } else {
-            // Si no hay familia identificada, usar referencia como identificador único
-            familiasUnicas.add(`REF_${referencia}`);
-          }
-        } else {
-          // Si no se encontró el alumno, usar referencia como identificador único
-          familiasUnicas.add(`REF_${referencia}`);
         }
       });
 
-      console.log(`✅ contarFamiliasPorFechaPago - ${familiasUnicas.size} familias únicas para función ${funcion}, fecha ${fechaPago}`);
-      return familiasUnicas.size;
+      console.log(`✅ contarFamiliasPorFechaPago - ${referenciasUnicas.size} referencias únicas para función ${funcion}, fecha ${fechaPago}`);
+      return referenciasUnicas.size;
 
     } catch (error) {
       console.error('Error al contar familias por fecha de pago:', error);
