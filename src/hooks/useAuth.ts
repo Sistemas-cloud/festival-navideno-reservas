@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserData, HermanosData } from '@/types';
 import { hasEarlyAccess, getOpeningDateForFunction } from '@/lib/config/earlyAccess';
-import { isBeforeOpeningDate } from '@/lib/utils/timezone';
+import { getTodayInMonterrey, parseDateString } from '@/lib/utils/timezone';
 
 /**
  * Valida si un usuario tiene acceso al sistema basándose en:
@@ -45,9 +45,15 @@ function validateUserAccess(userData: UserData): boolean {
   const tieneAccesoAnticipado = hasEarlyAccess(userData.alumnoRef);
   const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
 
-  // Si no tiene acceso anticipado y aún no ha llegado la fecha de apertura, denegar acceso
-  if (!tieneAccesoAnticipado && isBeforeOpeningDate(fechaAperturaStr)) {
+  // Solo denegar acceso si NO tiene acceso anticipado Y la fecha actual es ANTES de la fecha de apertura
+  // Si la fecha es igual o posterior, permitir acceso
+  const today = getTodayInMonterrey();
+  const fechaApertura = parseDateString(fechaAperturaStr);
+  const fechaAunNoHaPasado = today.getTime() < fechaApertura.getTime();
+
+  if (!tieneAccesoAnticipado && fechaAunNoHaPasado) {
     console.log(`🚫 Validación de acceso: Usuario ${userData.alumnoRef} no tiene acceso - fecha de apertura: ${fechaAperturaStr}`);
+    console.log(`📅 Fecha actual: ${today.toLocaleDateString('es-MX')}, Fecha de apertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
     return false;
   }
 

@@ -249,9 +249,14 @@ export class AuthModel {
       // La fecha de apertura se verifica usando la hora de Monterrey
       const tieneAccesoAnticipado = hasEarlyAccess(alumnoRef);
       const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
+      const today = getTodayInMonterrey();
+      const fechaApertura = parseDateString(fechaAperturaStr);
       
-      if (!tieneAccesoAnticipado && isBeforeOpeningDate(fechaAperturaStr)) {
-        const fechaApertura = parseDateString(fechaAperturaStr);
+      // Solo denegar acceso si NO tiene acceso anticipado Y la fecha actual es ANTES de la fecha de apertura
+      // Si la fecha es igual o posterior, permitir acceso
+      const fechaAunNoHaPasado = today.getTime() < fechaApertura.getTime();
+      
+      if (!tieneAccesoAnticipado && fechaAunNoHaPasado) {
         const fechaAperturaFormateada = fechaApertura.toLocaleDateString('es-MX', {
           year: 'numeric',
           month: 'long',
@@ -259,6 +264,7 @@ export class AuthModel {
           timeZone: 'America/Monterrey'
         });
         console.log(`🚫 Acceso denegado: El sistema estará disponible a partir del ${fechaAperturaFormateada} (medianoche hora de Monterrey) para la ${nombreFuncion}`);
+        console.log(`📅 Fecha actual en Monterrey: ${today.toLocaleDateString('es-MX')}, Fecha de apertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
         return {
           success: false,
           message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} (medianoche hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha.`,
@@ -268,8 +274,12 @@ export class AuthModel {
         };
       }
       
+      // Log de acceso permitido
       if (tieneAccesoAnticipado) {
         console.log(`✅ Acceso anticipado concedido para control ${alumnoRef}`);
+      } else {
+        console.log(`✅ Acceso permitido: Fecha de apertura (${fechaAperturaStr}) ya pasó o es hoy`);
+        console.log(`📅 Fecha actual en Monterrey: ${today.toLocaleDateString('es-MX')}, Fecha de apertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
       }
       
       if (today >= fechaCierre) {

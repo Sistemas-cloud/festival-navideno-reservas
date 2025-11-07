@@ -16,3 +16,4 @@ WHERE referencia NOT IN (
 );
 
 
+

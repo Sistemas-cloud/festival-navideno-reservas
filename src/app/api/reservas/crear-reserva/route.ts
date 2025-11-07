@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ReservaModel } from '@/lib/models/ReservaModel';
 import { isInternalUser } from '@/lib/config/internalUsers';
 import { hasEarlyAccess, getOpeningDateForFunction } from '@/lib/config/earlyAccess';
-import { isBeforeOpeningDate } from '@/lib/utils/timezone';
 import { getSupabaseClient } from '@/lib/supabase';
 
 /**
@@ -55,9 +54,15 @@ async function validateReservationAccess(alumnoRef: number): Promise<{
   // Verificar acceso anticipado
   const tieneAccesoAnticipado = hasEarlyAccess(alumnoRef);
   const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
+  
+  // Solo denegar acceso si NO tiene acceso anticipado Y la fecha actual es ANTES de la fecha de apertura
+  // Si la fecha es igual o posterior, permitir acceso
+  const { getTodayInMonterrey, parseDateString } = await import('@/lib/utils/timezone');
+  const today = getTodayInMonterrey();
+  const fechaApertura = parseDateString(fechaAperturaStr);
+  const fechaAunNoHaPasado = today.getTime() < fechaApertura.getTime();
 
-  // Si no tiene acceso anticipado y aún no ha llegado la fecha de apertura, denegar acceso
-  if (!tieneAccesoAnticipado && isBeforeOpeningDate(fechaAperturaStr)) {
+  if (!tieneAccesoAnticipado && fechaAunNoHaPasado) {
     const nombresFunciones: { [key: number]: string } = {
       1: '1ra Función',
       2: '2da Función',
