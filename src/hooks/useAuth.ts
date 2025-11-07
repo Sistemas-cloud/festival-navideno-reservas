@@ -31,7 +31,7 @@ export const useAuth = () => {
     }
   }, []);
 
-  const login = async (alumnoRef: number, clave: string | number): Promise<boolean> => {
+  const login = async (alumnoRef: number, clave: string | number): Promise<{ success: boolean; errorInfo?: { isAccessDeniedByDate: boolean; fechaApertura?: string; nombreFuncion?: string; message: string } }> => {
     setLoading(true);
     try {
       const response = await fetch('/api/auth/login', {
@@ -87,15 +87,28 @@ export const useAuth = () => {
           }, 500);
         }, 100);
         
-        return true;
+        return { success: true };
       } else {
+        // Retornar información detallada del error
+        if (result.isAccessDeniedByDate) {
+          return {
+            success: false,
+            errorInfo: {
+              isAccessDeniedByDate: true,
+              fechaApertura: result.fechaApertura,
+              nombreFuncion: result.nombreFuncion,
+              message: result.message || 'Acceso denegado por fecha'
+            }
+          };
+        }
+        // Para otros errores, mostrar alert normal
         alert(result.message || 'Error en el login');
-        return false;
+        return { success: false };
       }
     } catch (error) {
       console.error('Error en login:', error);
       alert('Error de conexión');
-      return false;
+      return { success: false };
     } finally {
       setLoading(false);
     }

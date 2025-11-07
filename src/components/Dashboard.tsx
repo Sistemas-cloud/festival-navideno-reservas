@@ -219,10 +219,35 @@ export const Dashboard: React.FC = () => {
     });
   }
 
+  // Función helper para obtener la fecha actual en hora de Monterrey (compatible con cliente)
+  const getTodayInMonterrey = (): Date => {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Monterrey',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const todayStr = formatter.format(now); // Formato: YYYY-MM-DD
+    const [year, month, day] = todayStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  };
+
+  // Función helper para parsear fecha string a Date (solo día, sin hora)
+  const parseDateString = (dateStr: string): Date => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  };
+
   // Validar fechas cuando se selecciona una sección
   // El sistema se cierra INICIANDO el segundo día de venta para cada nivel
   // Los usuarios pueden eliminar asientos pero no pueden reservar nuevos después del cierre
   // Los usuarios internos nunca están bloqueados por fechas
+  // Usa hora de Monterrey para todas las comparaciones
   const validateDates = () => {
     // Usuarios internos siempre pueden reservar
     if (userData.isInternal) {
@@ -230,18 +255,12 @@ export const Dashboard: React.FC = () => {
       return true;
     }
     
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayInMonterrey();
 
-    // Fechas de cierre (iniciando el segundo día de venta)
-    const fechaCierreKinder = new Date("2025-12-02"); // Cierra iniciando el 2 de dic (vende 1 y 2 de dic)
-    const fechaCierrePrimaria = new Date("2025-12-05"); // Cierra iniciando el 5 de dic (vende 4 y 5 de dic)
-    const fechaCierreSecundaria = new Date("2025-12-09"); // Cierra iniciando el 9 de dic (vende 8 y 9 de dic)
-
-    // Establecer al inicio del día (00:00:00) para que cierre iniciando ese día
-    fechaCierreKinder.setHours(0, 0, 0, 0);
-    fechaCierrePrimaria.setHours(0, 0, 0, 0);
-    fechaCierreSecundaria.setHours(0, 0, 0, 0);
+    // Fechas de cierre (iniciando el segundo día de venta) - usando hora de Monterrey
+    const fechaCierreKinder = parseDateString("2025-12-02"); // Cierra iniciando el 2 de dic (vende 1 y 2 de dic)
+    const fechaCierrePrimaria = parseDateString("2025-12-05"); // Cierra iniciando el 5 de dic (vende 4 y 5 de dic)
+    const fechaCierreSecundaria = parseDateString("2025-12-09"); // Cierra iniciando el 9 de dic (vende 8 y 9 de dic)
 
     // Validar según la función del alumno
     if (levelClose === 1) {

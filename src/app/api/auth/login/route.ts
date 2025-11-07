@@ -43,7 +43,10 @@ export async function POST(request: NextRequest) {
     if (!authResult.success) {
       return NextResponse.json({
         success: false,
-        message: authResult.message || 'Error en autenticación'
+        message: authResult.message || 'Error en autenticación',
+        isAccessDeniedByDate: authResult.isAccessDeniedByDate || false,
+        fechaApertura: authResult.fechaApertura,
+        nombreFuncion: authResult.nombreFuncion
       }, { status: 401 });
     }
     

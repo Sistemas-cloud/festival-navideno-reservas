@@ -36,19 +36,19 @@ export function hasEarlyAccess(control: number): boolean {
 }
 
 /**
- * Fechas de apertura por función
- * El sistema estará cerrado para el público hasta estas fechas
+ * Fechas de apertura por función (en formato YYYY-MM-DD)
+ * El sistema estará cerrado para el público hasta estas fechas a medianoche en hora de Monterrey
  */
 export const OPENING_DATES = {
-  FUNCION_1: new Date('2025-11-07'),
-  FUNCION_2: new Date('2025-11-08'),
-  FUNCION_3: new Date('2025-11-09')
+  FUNCION_1: '2025-11-07',
+  FUNCION_2: '2025-11-08',
+  FUNCION_3: '2025-11-09'
 };
 
 /**
- * Obtiene la fecha de apertura para una función específica
+ * Obtiene la fecha de apertura para una función específica (string YYYY-MM-DD)
  */
-export function getOpeningDateForFunction(funcion: number): Date {
+export function getOpeningDateForFunction(funcion: number): string {
   switch (funcion) {
     case 1:
       return OPENING_DATES.FUNCION_1;

@@ -1,6 +1,7 @@
 import { getSupabaseClient } from '../supabase';
 import { validateInternalUser } from '../config/internalUsers';
 import { hasEarlyAccess, getOpeningDateForFunction } from '../config/earlyAccess';
+import { getTodayInMonterrey, parseDateString, isBeforeOpeningDate } from '../utils/timezone';
 
 interface HermanoData {
   nombre: string;
@@ -11,9 +12,21 @@ interface HermanoData {
   funcionAsignada?: number;
 }
 
+export interface AuthResult {
+  success: boolean;
+  data?: unknown;
+  message?: string;
+  isInternal?: boolean;
+  funcionAsignada?: number;
+  // Información adicional para errores de fecha de apertura
+  isAccessDeniedByDate?: boolean;
+  fechaApertura?: string;
+  nombreFuncion?: string;
+}
+
 export class AuthModel {
   
-  async authenticate(alumnoRef: number, clave: string | number): Promise<{ success: boolean; data?: unknown; message?: string; isInternal?: boolean; funcionAsignada?: number }> {
+  async authenticate(alumnoRef: number, clave: string | number): Promise<AuthResult> {
     try {
       console.log('🔐 AuthModel: Iniciando autenticación para alumno:', alumnoRef);
       
@@ -181,21 +194,16 @@ export class AuthModel {
       console.log('  🏛️ BRONCE PALCOS - Desde $140');
       console.log('  🏛️ BRONCE BALCÓN - Desde $140');
       
-      // Validaciones de fechas
-      const today = new Date();
+      // Validaciones de fechas (usando hora de Monterrey)
+      const today = getTodayInMonterrey();
       
       // Fechas de cierre por función (iniciando el segundo día de venta)
       // Función 1: Maternal + Kinder + 1° primaria → vende 1-2 dic, cierra iniciando el 2 dic
       // Función 2: 2°-5° primaria → vende 4-5 dic, cierra iniciando el 5 dic
       // Función 3: 6° primaria + Secundaria → vende 8-9 dic, cierra iniciando el 9 dic
-      const fechaCierreFuncion1 = new Date("2025-12-02");
-      const fechaCierreFuncion2 = new Date("2025-12-05");
-      const fechaCierreFuncion3 = new Date("2025-12-09");
-      
-      // Establecer al inicio del día (00:00:00) para que cierre iniciando ese día
-      fechaCierreFuncion1.setHours(0, 0, 0, 0);
-      fechaCierreFuncion2.setHours(0, 0, 0, 0);
-      fechaCierreFuncion3.setHours(0, 0, 0, 0);
+      const fechaCierreFuncion1 = parseDateString("2025-12-02");
+      const fechaCierreFuncion2 = parseDateString("2025-12-05");
+      const fechaCierreFuncion3 = parseDateString("2025-12-09");
       
       // Determinar fecha de cierre según la función del alumno
       let fechaCierre = fechaCierreFuncion3; // Por defecto
@@ -226,9 +234,6 @@ export class AuthModel {
         nombreFuncion = '3ra Función';
       }
       
-      // Normalizar today para comparar solo fechas (sin horas)
-      today.setHours(0, 0, 0, 0);
-      
       // Calcular función numérica para validación de acceso anticipado
       let funcionNum = 3; // Por defecto
       if (nivel === 1 || nivel === 2 || (nivel === 3 && grado === 1)) {
@@ -241,20 +246,25 @@ export class AuthModel {
       
       // VALIDACIÓN DE ACCESO ANTICIPADO
       // Verificar si el usuario tiene acceso anticipado o si la fecha de apertura ya pasó
+      // La fecha de apertura se verifica usando la hora de Monterrey
       const tieneAccesoAnticipado = hasEarlyAccess(alumnoRef);
-      const fechaApertura = getOpeningDateForFunction(funcionNum);
-      fechaApertura.setHours(0, 0, 0, 0);
+      const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
       
-      if (!tieneAccesoAnticipado && today < fechaApertura) {
+      if (!tieneAccesoAnticipado && isBeforeOpeningDate(fechaAperturaStr)) {
+        const fechaApertura = parseDateString(fechaAperturaStr);
         const fechaAperturaFormateada = fechaApertura.toLocaleDateString('es-MX', {
           year: 'numeric',
           month: 'long',
-          day: 'numeric'
+          day: 'numeric',
+          timeZone: 'America/Monterrey'
         });
-        console.log(`🚫 Acceso denegado: El sistema estará disponible a partir del ${fechaAperturaFormateada} para la ${nombreFuncion}`);
+        console.log(`🚫 Acceso denegado: El sistema estará disponible a partir del ${fechaAperturaFormateada} (medianoche hora de Monterrey) para la ${nombreFuncion}`);
         return {
           success: false,
-          message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha.`
+          message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} (medianoche hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha.`,
+          isAccessDeniedByDate: true,
+          fechaApertura: fechaAperturaStr,
+          nombreFuncion: nombreFuncion
         };
       }
       

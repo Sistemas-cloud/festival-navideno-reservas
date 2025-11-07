@@ -1,6 +1,7 @@
 import { getSupabaseClient, Reserva } from '../supabase';
 import { isInternalUser, findInternalUser } from '../config/internalUsers';
 import { formatPaymentDate } from '../utils/paymentDates';
+import { getTodayInMonterrey, parseDateString } from '../utils/timezone';
 
 export class ReservaModel {
   
@@ -920,18 +921,12 @@ export class ReservaModel {
       const grado = alumno.alumno_grado;
       const funcion = this.calcularFuncion(nivel, grado);
 
-      // Fechas de cierre (iniciando el segundo día de venta)
-      const fechaCierreFuncion1 = new Date("2025-12-02");
-      const fechaCierreFuncion2 = new Date("2025-12-05");
-      const fechaCierreFuncion3 = new Date("2025-12-09");
+      // Fechas de cierre (iniciando el segundo día de venta) - usando hora de Monterrey
+      const fechaCierreFuncion1 = parseDateString("2025-12-02");
+      const fechaCierreFuncion2 = parseDateString("2025-12-05");
+      const fechaCierreFuncion3 = parseDateString("2025-12-09");
 
-      // Establecer al inicio del día (00:00:00) para que cierre iniciando ese día
-      fechaCierreFuncion1.setHours(0, 0, 0, 0);
-      fechaCierreFuncion2.setHours(0, 0, 0, 0);
-      fechaCierreFuncion3.setHours(0, 0, 0, 0);
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = getTodayInMonterrey();
 
       let fechaCierre: Date;
       let nombreFuncion: string;

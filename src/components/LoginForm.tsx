@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { AccessDeniedModal } from './AccessDeniedModal';
 
 interface LoginFormProps {
   onLoginSuccess: () => void;
@@ -10,6 +11,11 @@ interface LoginFormProps {
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
   const [alumnoRef, setAlumnoRef] = useState('');
   const [clave, setClave] = useState('');
+  const [showAccessDeniedModal, setShowAccessDeniedModal] = useState(false);
+  const [accessDeniedInfo, setAccessDeniedInfo] = useState<{
+    fechaApertura: string;
+    nombreFuncion: string;
+  } | null>(null);
   const { login, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -26,9 +32,16 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       return;
     }
 
-    const success = await login(parseInt(alumnoRef), clave);
-    if (success) {
+    const result = await login(parseInt(alumnoRef), clave);
+    if (result.success) {
       onLoginSuccess();
+    } else if (result.errorInfo?.isAccessDeniedByDate) {
+      // Mostrar modal de acceso denegado
+      setAccessDeniedInfo({
+        fechaApertura: result.errorInfo.fechaApertura || '',
+        nombreFuncion: result.errorInfo.nombreFuncion || ''
+      });
+      setShowAccessDeniedModal(true);
     }
   };
 
@@ -149,6 +162,19 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
           </button>
         </div>
       </form>
+
+      {/* Modal de acceso denegado */}
+      {accessDeniedInfo && (
+        <AccessDeniedModal
+          isOpen={showAccessDeniedModal}
+          onClose={() => {
+            setShowAccessDeniedModal(false);
+            setAccessDeniedInfo(null);
+          }}
+          fechaApertura={accessDeniedInfo.fechaApertura}
+          nombreFuncion={accessDeniedInfo.nombreFuncion}
+        />
+      )}
     </div>
   );
 };
