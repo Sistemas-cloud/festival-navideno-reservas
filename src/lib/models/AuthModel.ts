@@ -247,9 +247,9 @@ export class AuthModel {
       // VALIDACIÓN DE ACCESO ANTICIPADO
       // Verificar si el usuario tiene acceso anticipado o si la fecha de apertura ya pasó
       // La fecha de apertura se verifica usando la hora de Monterrey
+      // Nota: 'today' ya fue declarado arriba en la línea 198
       const tieneAccesoAnticipado = hasEarlyAccess(alumnoRef);
       const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
-      const today = getTodayInMonterrey();
       const fechaApertura = parseDateString(fechaAperturaStr);
       
       // Solo denegar acceso si NO tiene acceso anticipado Y la fecha actual es ANTES de la fecha de apertura
