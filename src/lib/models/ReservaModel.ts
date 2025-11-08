@@ -527,7 +527,19 @@ export class ReservaModel {
     const supabase = getSupabaseClient();
     
     try {
-      const nivel = await this.getNivelAlumno(alumnoRef);
+      const esInterno = isInternalUser(alumnoRef);
+      let nivel: number;
+
+      if (esInterno) {
+        const internalUser = findInternalUser(alumnoRef);
+        if (!internalUser) {
+          return { success: false, message: 'Error: Usuario interno no encontrado.' };
+        }
+        nivel = internalUser.funcion;
+        console.log(`🔐 eliminarReserva - Usuario interno detectado: ${internalUser.nombre}, función: ${nivel}`);
+      } else {
+        nivel = await this.getNivelAlumno(alumnoRef);
+      }
       
       console.log(`🗑️ Iniciando eliminación transaccional de ${asientos.length} reservas para alumno ${alumnoRef}`);
       
@@ -561,7 +573,7 @@ export class ReservaModel {
           };
         }
 
-        if (reservaExistente.referencia !== alumnoRef) {
+        if (!esInterno && reservaExistente.referencia !== alumnoRef) {
           return { 
             success: false, 
             message: `El asiento ${asiento.fila}${asiento.asiento} no pertenece a tu reserva.` 

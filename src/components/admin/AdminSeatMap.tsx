@@ -26,7 +26,16 @@ const sectionConfigs: Record<number, {
   1: { name: 'ORO', color: 'oro', rows: { A: 10, B: 19, C: 27, D: 31, E: 33, F: 35, G: 39, H: 41, I: 43 } },
   2: { name: 'PLATA', color: 'plata', rows: { J: 31, K: 37, L: 37, M: 37, N: 37, O: 37, P: 37, Q: 45, R: 45, S: 45, T: 45, U: 45, V: 39, W: 42 }, disabledSeats: [ { row: 'J', seat: 1 }, { row: 'J', seat: 2 }, { row: 'J', seat: 3 }, { row: 'J', seat: 4 }, { row: 'J', seat: 5 }, { row: 'J', seat: 27 }, { row: 'J', seat: 28 }, { row: 'J', seat: 29 }, { row: 'J', seat: 30 }, { row: 'J', seat: 31 } ] },
   3: { name: 'BRONCE (PALCOS)', color: 'bronce', rows: { II: 5, HH: 12, JJ: 12, KK: 5 }, specialLayout: true },
-  4: { name: 'BRONCE (BALCÓN)', color: 'bronce', rows: { II: 5, HH: 12, JJ: 12, KK: 5 }, specialLayout: true },
+  4: { 
+    name: 'BRONCE (BALCÓN)', 
+    color: 'bronce', 
+    rows: { AA: 39, BB: 39, CC: 39, DD: 39, EE: 45, FF: 43, GG: 42 },
+    disabledSeats: [
+      { row: 'AA', seat: 18 }, { row: 'AA', seat: 19 }, { row: 'AA', seat: 20 }, { row: 'AA', seat: 21 }, { row: 'AA', seat: 22 }, { row: 'AA', seat: 23 },
+      { row: 'BB', seat: 18 }, { row: 'BB', seat: 19 }, { row: 'BB', seat: 20 }, { row: 'BB', seat: 21 }, { row: 'BB', seat: 22 }, { row: 'BB', seat: 23 },
+      { row: 'CC', seat: 18 }, { row: 'CC', seat: 19 }, { row: 'CC', seat: 20 }, { row: 'CC', seat: 21 }, { row: 'CC', seat: 22 }, { row: 'CC', seat: 23 }
+    ]
+  },
 };
 
 export const AdminSeatMap: React.FC<AdminSeatMapProps> = ({ section, ocupados, resaltados = [] }) => {
@@ -41,7 +50,8 @@ export const AdminSeatMap: React.FC<AdminSeatMapProps> = ({ section, ocupados, r
   };
 
   const getSeatClass = (row: string, seat: number): string => {
-    let classes = 'relative w-6 h-6 inline-flex items-center justify-center text-xs font-bold cursor-pointer transition-all duration-300 transform hover:scale-110 rounded shadow-md border';
+    const baseTextSize = config.name === 'BRONCE (BALCÓN)' ? 'text-[10px]' : 'text-xs';
+    let classes = `relative w-6 h-6 inline-flex items-center justify-center ${baseTextSize} font-bold cursor-pointer transition-all duration-300 transform hover:scale-110 rounded shadow-md border`;
 
     const oc = findOcupacion(row, seat);
     const isDisabled = isSeatDisabled(row, seat);

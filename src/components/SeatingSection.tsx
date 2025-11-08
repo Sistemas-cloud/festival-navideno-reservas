@@ -52,8 +52,12 @@ const sectionConfigs: { [key: number]: SectionConfig } = {
     name: 'BRONCE (BALCÓN)',
     color: 'bronce',
     price: 140.00,
-    rows: { II: 5, HH: 12, JJ: 12, KK: 5 },
-    specialLayout: true
+    rows: { AA: 39, BB: 39, CC: 39, DD: 39, EE: 45, FF: 43, GG: 42 },
+    disabledSeats: [
+      { row: 'AA', seat: 18 }, { row: 'AA', seat: 19 }, { row: 'AA', seat: 20 }, { row: 'AA', seat: 21 }, { row: 'AA', seat: 22 }, { row: 'AA', seat: 23 },
+      { row: 'BB', seat: 18 }, { row: 'BB', seat: 19 }, { row: 'BB', seat: 20 }, { row: 'BB', seat: 21 }, { row: 'BB', seat: 22 }, { row: 'BB', seat: 23 },
+      { row: 'CC', seat: 18 }, { row: 'CC', seat: 19 }, { row: 'CC', seat: 20 }, { row: 'CC', seat: 21 }, { row: 'CC', seat: 22 }, { row: 'CC', seat: 23 }
+    ]
   }
 };
 
@@ -186,7 +190,8 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
   };
 
   const getSeatClass = (row: string, seat: number): string => {
-    let classes = 'relative w-6 h-6 inline-flex items-center justify-center text-xs font-bold cursor-pointer transition-all duration-300 transform hover:scale-110 rounded shadow-md border';
+    const baseTextSize = config.name === 'BRONCE (BALCÓN)' ? 'text-[10px]' : 'text-xs';
+    let classes = `relative w-6 h-6 inline-flex items-center justify-center ${baseTextSize} font-bold cursor-pointer transition-all duration-300 transform hover:scale-110 rounded shadow-md border`;
     
     if (isSeatPaid(row, seat)) {
       classes += ' bg-gray-800 text-white border-gray-600 cursor-not-allowed shadow-lg';
