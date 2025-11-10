@@ -82,16 +82,36 @@ export async function GET(request: NextRequest) {
 
     // Buscar hermanos
     const allIds = new Set<number>();
+    const coincidenciasMap = new Map<number, {
+      telefonos: Set<string>;
+      curps: Set<string>;
+    }>();
+
+    const ensureCoincidenciaEntry = (alumnoId: number) => {
+      if (!coincidenciasMap.has(alumnoId)) {
+        coincidenciasMap.set(alumnoId, {
+          telefonos: new Set<string>(),
+          curps: new Set<string>()
+        });
+      }
+      return coincidenciasMap.get(alumnoId)!;
+    };
 
     // Búsqueda por teléfono
     if (searchCriteria.telefonos.size > 0) {
       const { data: celularRows } = await supabase
         .from('alumno_familiar')
-        .select('alumno_id')
+        .select('alumno_id, familiar_cel')
         .in('familiar_cel', Array.from(searchCriteria.telefonos));
 
       if (celularRows) {
-        celularRows.forEach((row: { alumno_id: number }) => allIds.add(row.alumno_id));
+        celularRows.forEach((row: { alumno_id: number; familiar_cel: string | null }) => {
+          if (!row || typeof row.alumno_id !== 'number') return;
+          allIds.add(row.alumno_id);
+          if (row.familiar_cel) {
+            ensureCoincidenciaEntry(row.alumno_id).telefonos.add(row.familiar_cel);
+          }
+        });
       }
     }
 
@@ -99,16 +119,23 @@ export async function GET(request: NextRequest) {
     if (searchCriteria.curps.size > 0) {
       const { data: curpRows } = await supabase
         .from('alumno_familiar')
-        .select('alumno_id')
+        .select('alumno_id, familiar_curp')
         .in('familiar_curp', Array.from(searchCriteria.curps));
 
       if (curpRows) {
-        curpRows.forEach((row: { alumno_id: number }) => allIds.add(row.alumno_id));
+        curpRows.forEach((row: { alumno_id: number; familiar_curp: string | null }) => {
+          if (!row || typeof row.alumno_id !== 'number') return;
+          allIds.add(row.alumno_id);
+          if (row.familiar_curp) {
+            ensureCoincidenciaEntry(row.alumno_id).curps.add(row.familiar_curp);
+          }
+        });
       }
     }
 
     // Obtener datos de hermanos
     let hermanosData: Array<{
+      alumnoId: number;
       control: number;
       nombre: string;
       nivel: number;
@@ -124,6 +151,7 @@ export async function GET(request: NextRequest) {
 
       if (hermanos) {
         hermanosData = hermanos.map(hermano => ({
+          alumnoId: hermano.alumno_id,
           control: hermano.alumno_ref,
           nombre: `${hermano.alumno_app} ${hermano.alumno_apm} ${hermano.alumno_nombre}`,
           nivel: hermano.alumno_nivel,
@@ -134,6 +162,7 @@ export async function GET(request: NextRequest) {
 
     // Agregar al alumno actual
     const alumnoActual = {
+      alumnoId: alumno.alumno_id,
       control: alumno.alumno_ref,
       nombre: `${alumno.alumno_app} ${alumno.alumno_apm} ${alumno.alumno_nombre}`,
       nivel: alumno.alumno_nivel,
@@ -155,6 +184,24 @@ export async function GET(request: NextRequest) {
         idsEncontrados: Array.from(allIds),
         hermanos: hermanosData,
         totalHermanos: hermanosData.length,
+        coincidencias: (hermanosData || [])
+          .filter(hermano => hermano.alumnoId !== alumno.alumno_id)
+          .map(hermano => {
+            const coincidencias = coincidenciasMap.get(hermano.alumnoId) || {
+              telefonos: new Set<string>(),
+              curps: new Set<string>()
+            };
+
+            return {
+              alumnoId: hermano.alumnoId,
+              control: hermano.control,
+              nombre: hermano.nombre,
+              coincidencias: {
+                telefonos: Array.from(coincidencias.telefonos),
+                curps: Array.from(coincidencias.curps)
+              }
+            };
+          }),
         debug: {
           alumnoId: alumno.alumno_id,
           alumnoRef: alumno.alumno_ref,

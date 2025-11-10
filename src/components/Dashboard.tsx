@@ -130,7 +130,36 @@ export const Dashboard: React.FC = () => {
       
       if (result.success) {
         console.log('🔍 DEBUG HERMANOS - Resultado completo:', result.data);
-        alert(`Debug completado. Revisa la consola para ver los detalles.\nTotal hermanos: ${result.data.totalHermanos}`);
+
+        const coincidencias = Array.isArray(result.data?.coincidencias) ? result.data.coincidencias : [];
+        console.log('🔍 DEBUG HERMANOS - Coincidencias detectadas:', coincidencias);
+
+        const detallesCoincidencias = coincidencias.map((coincidencia: {
+          control: number;
+          nombre: string;
+          coincidencias: {
+            telefonos: string[];
+            curps: string[];
+          };
+        }) => {
+          const partes: string[] = [];
+          if (coincidencia.coincidencias.telefonos.length > 0) {
+            partes.push(`Teléfono(s): ${coincidencia.coincidencias.telefonos.join(', ')}`);
+          }
+          if (coincidencia.coincidencias.curps.length > 0) {
+            partes.push(`CURP(s): ${coincidencia.coincidencias.curps.join(', ')}`);
+          }
+          if (partes.length === 0) {
+            partes.push('Sin coincidencias registradas');
+          }
+          return `${coincidencia.control} - ${coincidencia.nombre}\n  ${partes.join('\n  ')}`;
+        });
+
+        const mensajeCoincidencias = detallesCoincidencias.length > 0
+          ? `Coincidencias detectadas:\n\n${detallesCoincidencias.join('\n\n')}`
+          : 'No se encontraron coincidencias compartidas con otros alumnos.';
+
+        alert(`${mensajeCoincidencias}\n\nTotal hermanos detectados (incluye al alumno): ${result.data.totalHermanos}`);
       } else {
         alert('Error en debug: ' + result.message);
       }

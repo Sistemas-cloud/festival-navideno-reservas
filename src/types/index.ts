@@ -68,6 +68,7 @@ export interface SectionConfig {
   color: string;
   price: number;
   rows: SeatingConfig;
+  accessibleSeats?: Array<{ row: string; seat: number }>;
   disabledSeats?: Array<{ row: string; seat: number }>;
   specialLayout?: boolean;
 }

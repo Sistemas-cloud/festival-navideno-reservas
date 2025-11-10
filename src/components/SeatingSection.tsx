@@ -36,7 +36,7 @@ const sectionConfigs: { [key: number]: SectionConfig } = {
     color: 'plata',
     price: 180.00,
     rows: { J: 31, K: 37, L: 37, M: 37, N: 37, O: 37, P: 37, Q: 45, R: 45, S: 45, T: 45, U: 45, V: 39, W: 42 },
-    disabledSeats: [
+    accessibleSeats: [
       { row: 'J', seat: 1 }, { row: 'J', seat: 2 }, { row: 'J', seat: 3 }, { row: 'J', seat: 4 }, { row: 'J', seat: 5 },
       { row: 'J', seat: 27 }, { row: 'J', seat: 28 }, { row: 'J', seat: 29 }, { row: 'J', seat: 30 }, { row: 'J', seat: 31 }
     ]
@@ -155,6 +155,10 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
     return config.disabledSeats?.some(ds => ds.row === row && ds.seat === seat) || false;
   };
 
+  const isSeatAccessible = (row: string, seat: number): boolean => {
+    return config.accessibleSeats?.some(ds => ds.row === row && ds.seat === seat) || false;
+  };
+
   const isSeatReserved = (row: string, seat: number): boolean => {
     return reservas.some(r => r.fila === row && r.asiento === seat);
   };
@@ -170,6 +174,13 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
   const handleSeatClick = (row: string, seat: number) => {
     if (isSeatReserved(row, seat) || isSeatPaid(row, seat) || isSeatDisabled(row, seat)) {
       return;
+    }
+
+    if (isSeatAccessible(row, seat)) {
+      const shouldContinue = confirm('Este asiento está reservado para personas con discapacidad. ¿Deseas continuar con la selección?');
+      if (!shouldContinue) {
+        return;
+      }
     }
 
     const seatInfo: Asiento = { fila: row, asiento: seat };
@@ -199,6 +210,8 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
       classes += ' bg-red-500 text-white border-red-600 cursor-not-allowed shadow-lg';
     } else if (isSeatSelected(row, seat)) {
       classes += ' bg-blue-500 text-white border-blue-600 shadow-lg scale-105';
+    } else if (isSeatAccessible(row, seat)) {
+      classes += ' bg-blue-200 text-blue-900 border-blue-400 ring-2 ring-blue-300/60';
     } else if (isSeatDisabled(row, seat)) {
       classes += ' bg-gray-300 text-gray-500 border-gray-400 cursor-not-allowed';
     } else {
@@ -417,6 +430,10 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
                       <div className="w-4 h-4 bg-blue-500 rounded border border-blue-600 shadow-sm"></div>
                       <span className="font-medium text-slate-700">Seleccionado</span>
                     </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-blue-200 rounded border border-blue-400 ring-2 ring-blue-300/60 shadow-sm"></div>
+                  <span className="font-medium text-slate-700">Accesible (PCD)</span>
+                </div>
                     <div className="flex items-center space-x-2">
                       <div className="w-4 h-4 bg-red-500 rounded border border-red-600 shadow-sm"></div>
                       <span className="font-medium text-slate-700">Reservado</span>
