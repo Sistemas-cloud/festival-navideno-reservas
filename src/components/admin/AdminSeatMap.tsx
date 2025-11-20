@@ -82,7 +82,15 @@ export const AdminSeatMap: React.FC<AdminSeatMapProps> = ({ section, ocupados, r
     }
 
     if (isResaltado) {
-      classes += highlight?.color === 'orange' ? ' glow-orange' : ' glow-blue';
+      if (highlight?.color === 'orange') {
+        // Color naranja/ámbar vibrante con aura
+        classes += ' bg-gradient-to-br from-amber-400 to-orange-500 text-white border-orange-400';
+        classes += ' seat-aura-orange';
+      } else {
+        // Color índigo/púrpura vibrante con aura
+        classes += ' bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white border-purple-400';
+        classes += ' seat-aura-purple';
+      }
     }
 
     return classes;
@@ -97,7 +105,8 @@ export const AdminSeatMap: React.FC<AdminSeatMapProps> = ({ section, ocupados, r
           <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-red-500 rounded mr-2 border border-red-600/60" />Reservado</span>
           <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-blue-200 rounded mr-2 border border-blue-400 ring-2 ring-blue-300/60" />Accesible (PCD)</span>
           <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-green-400 rounded mr-2 border border-green-500/60" />Disponible</span>
-          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-white rounded mr-2 ring-2 ring-blue-400" />Destacado</span>
+          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded mr-2 border border-purple-400 shadow-md" />Canje (Mayor)</span>
+          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-gradient-to-br from-amber-400 to-orange-500 rounded mr-2 border border-orange-400 shadow-md" />Canje (Menor)</span>
         </div>
       </div>
       <div className="overflow-auto seating-container mx-auto w-full">
@@ -105,9 +114,14 @@ export const AdminSeatMap: React.FC<AdminSeatMapProps> = ({ section, ocupados, r
           <div key={row} className="mb-2">
             <div className="text-xs text-gray-600 mb-1 text-center">Fila {row}</div>
             <div className="flex flex-nowrap gap-1 justify-center overflow-x-auto">
-              {Array.from({ length: count }, (_, i) => i + 1).map(seat => (
-                <div key={`${row}-${seat}`} className={getSeatClass(row, seat)}>{seat}</div>
-              ))}
+              {Array.from({ length: count }, (_, i) => i + 1).map(seat => {
+                const isResaltado = resaltados.some(r => r.fila === row && r.asiento === seat);
+                return (
+                  <div key={`${row}-${seat}`} className={getSeatClass(row, seat)}>
+                    <span className={`relative z-10 ${isResaltado ? 'drop-shadow-md' : ''}`}>{seat}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}

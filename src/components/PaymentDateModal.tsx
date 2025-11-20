@@ -31,15 +31,10 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
   const [dateAvailability, setDateAvailability] = useState<DateAvailability[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   
-  // LOG TEMPORAL PARA DEBUG
-  console.log('🚨 PaymentDateModal - NIVEL RECIBIDO:', nivel);
-  console.log('🚨 PaymentDateModal - TIPO DE NIVEL:', typeof nivel);
-
   // Obtener disponibilidad de fechas cuando se abre el modal
   // IMPORTANTE: Se ejecuta ANTES de mostrar el modal para tener la información lista
   useEffect(() => {
     if (isOpen && alumnoRef) {
-      console.log('🔍 PaymentDateModal - Iniciando consulta de disponibilidad...');
       setLoadingAvailability(true);
       setSelectedDate(''); // Limpiar selección previa
       setDateAvailability([]); // Limpiar disponibilidad previa
@@ -54,24 +49,19 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
         .then(res => res.json())
         .then(data => {
           if (data.success && data.disponibilidad) {
-            console.log('✅ PaymentDateModal - Disponibilidad recibida:', data.disponibilidad);
-            console.log('🔍 PaymentDateModal - Función:', data.funcion);
             setDateAvailability(data.disponibilidad);
             
             // Seleccionar automáticamente la primera fecha disponible (no llena)
             const fechaDisponible = data.disponibilidad.find((d: DateAvailability) => !d.llena);
             if (fechaDisponible) {
-              console.log('✅ PaymentDateModal - Seleccionando fecha disponible:', fechaDisponible.fecha);
               setSelectedDate(fechaDisponible.fecha);
             } else {
               // Si ambas están llenas, usar la primera como fallback (aunque esté llena)
               if (data.disponibilidad.length > 0) {
-                console.warn('⚠️ PaymentDateModal - Ambas fechas están llenas, usando primera como fallback');
                 setSelectedDate(data.disponibilidad[0].fecha);
               }
             }
           } else {
-            console.error('❌ PaymentDateModal - Error en respuesta:', data);
             // Fallback: usar fechas sin disponibilidad
             const availableDates = getPaymentDatesForLevel(nivel);
             if (availableDates.length > 0) {
@@ -80,7 +70,6 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
           }
         })
         .catch(error => {
-          console.error('❌ PaymentDateModal - Error al obtener disponibilidad:', error);
           // Fallback: usar fechas sin disponibilidad
           const availableDates = getPaymentDatesForLevel(nivel);
           if (availableDates.length > 0) {
@@ -89,7 +78,6 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
         })
         .finally(() => {
           setLoadingAvailability(false);
-          console.log('✅ PaymentDateModal - Consulta de disponibilidad finalizada');
         });
     } else if (!isOpen) {
       // Limpiar cuando se cierra el modal
@@ -101,13 +89,6 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
   if (!isOpen) return null;
 
   const availableDates = getPaymentDatesForLevel(nivel);
-  
-  // DEBUG: Mostrar información detallada
-  console.log('🔍 PaymentDateModal - Información completa:');
-  console.log('  - Nivel:', nivel);
-  console.log('  - Fechas disponibles:', availableDates);
-  console.log('  - Disponibilidad cargada:', dateAvailability);
-  console.log('  - Cargando disponibilidad:', loadingAvailability);
 
   const handleConfirm = () => {
     if (selectedDate) {

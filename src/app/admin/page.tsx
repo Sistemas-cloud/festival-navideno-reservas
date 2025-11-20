@@ -64,6 +64,7 @@ export default function AdminPage() {
   const [ocupacion, setOcupacion] = useState<OcupacionItem[]>([]);
   const [resaltados, setResaltados] = useState<{ fila: string; asiento: number; color?: 'blue' | 'orange' }[]>([]);
   const [activeTab, setActiveTab] = useState<'canje' | 'pago' | 'mapa'>('canje');
+  const [funcionAnterior, setFuncionAnterior] = useState<number>(1);
 
   const cargarOcupacion = async (funcion: number) => {
     try {
@@ -82,6 +83,14 @@ export default function AdminPage() {
   };
 
   useEffect(() => { cargarOcupacion(funcionMapa); }, [funcionMapa]);
+
+  // Limpiar resaltados cuando cambia la función
+  useEffect(() => {
+    if (funcionMapa !== funcionAnterior) {
+      setResaltados([]);
+      setFuncionAnterior(funcionMapa);
+    }
+  }, [funcionMapa, funcionAnterior]);
 
   const isCredsValid = useMemo(() => username === 'admin' && password === 'Admin2025.', [username, password]);
 
@@ -162,7 +171,10 @@ export default function AdminPage() {
               }
             }
 
-            if (pickedFuncion) setFuncionMapa(pickedFuncion);
+            if (pickedFuncion) {
+              setFuncionMapa(pickedFuncion);
+              setFuncionAnterior(pickedFuncion); // Actualizar función anterior para evitar limpiar resaltados
+            }
             if (pickedZona) setSectionMapa(pickedZona);
             setResaltados(resaltadosTmp);
             // Forzar recarga de ocupación acorde a la función seleccionada
@@ -188,273 +200,258 @@ export default function AdminPage() {
     new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', minimumFractionDigits: 2 }).format(Number(n || 0));
 
   return (
-    <div className="admin-container">
-      <div className="w-full max-w-7xl mx-auto px-6 flex items-center justify-center">
-        <div className="admin-form animate-fade-in w-full">
-          <h1 className="text-2xl font-bold mb-4">Área Administrativa</h1>
-
+    <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="w-full">
           {!isAuth ? (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="form-label">Usuario</label>
-                <input
-                  className="form-input"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  autoComplete="username"
-                />
+            <div className="max-w-md mx-auto">
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-indigo-200/50">
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 rounded-xl mb-4 shadow-lg">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2">Área Administrativa</h1>
+                  <p className="text-gray-500 text-sm">Ingresa tus credenciales para continuar</p>
+                </div>
+                <form onSubmit={handleLogin} className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Usuario</label>
+                    <input
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      autoComplete="username"
+                      placeholder="Ingresa tu usuario"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Contraseña</label>
+                    <input
+                      type="password"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      placeholder="Ingresa tu contraseña"
+                    />
+                  </div>
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                      {error}
+                    </div>
+                  )}
+                  <button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-semibold py-3 rounded-lg hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  >
+                    Entrar
+                  </button>
+                </form>
               </div>
-              <div>
-                <label className="form-label">Contraseña</label>
-                <input
-                  type="password"
-                  className="form-input"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                />
-              </div>
-              {error && <p className="text-sm text-red-300">{error}</p>}
-              <button type="submit" className="login-button">Entrar</button>
-            </form>
+            </div>
           ) : (
-            <div className="text-white">
-              {/* Encabezado con estilo similar al portal */}
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl px-6 py-5 mb-6 shadow">
+            <div>
+              {/* Encabezado */}
+              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl shadow-xl p-6 mb-6 border border-indigo-400/30">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-bold">Panel Administrativo</h2>
-                    <p className="text-sm opacity-90">Gestión de canjes, pagos y visualización de mapas</p>
+                    <h2 className="text-2xl font-bold text-white mb-1">Panel Administrativo</h2>
+                    <p className="text-indigo-100 text-sm">Gestión de canjes, pagos y visualización de mapas</p>
                   </div>
+                  <button
+                    onClick={() => setIsAuth(false)}
+                    className="px-4 py-2 text-sm font-medium text-indigo-600 bg-white rounded-lg hover:bg-indigo-50 transition-colors shadow-md"
+                  >
+                    Cerrar sesión
+                  </button>
                 </div>
               </div>
 
               {/* Pestañas */}
-              <div className="flex gap-3 mb-6 border-b border-white/20">
-                <button onClick={() => setActiveTab('canje')} className={`px-4 py-2 -mb-px border-b-2 ${activeTab==='canje' ? 'border-white text-white font-semibold' : 'border-transparent text-white/70 hover:text-white'}`}>Canje</button>
-                <button onClick={() => setActiveTab('pago')} className={`px-4 py-2 -mb-px border-b-2 ${activeTab==='pago' ? 'border-white text-white font-semibold' : 'border-transparent text-white/70 hover:text-white'}`}>Pago por Control</button>
-                <button onClick={() => setActiveTab('mapa')} className={`px-4 py-2 -mb-px border-b-2 ${activeTab==='mapa' ? 'border-white text-white font-semibold' : 'border-transparent text-white/70 hover:text-white'}`}>Mapa General</button>
+              <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-2 mb-6 border border-indigo-200/50">
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setActiveTab('canje')} 
+                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                      activeTab === 'canje' 
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Canje
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('pago')} 
+                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                      activeTab === 'pago' 
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Pago por Control
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('mapa')} 
+                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                      activeTab === 'mapa' 
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Mapa General
+                  </button>
+                </div>
               </div>
 
               {activeTab === 'canje' && (
-              <>
-              <h2 className="text-lg font-semibold mb-4">Canje de Boletos (Solo Funciones 2 y 3)</h2>
-              <form onSubmit={handleCanje} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="form-label">Control del Alumno Menor (canje)</label>
-                    <input
-                      className="form-input"
-                      value={controlMenor}
-                      onChange={(e) => setControlMenor(e.target.value)}
-                      placeholder="Ej. 12345"
-                    />
+              <div className="space-y-6">
+                {/* Formulario de Canje */}
+                <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-indigo-200/50">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">Canje de Boletos</h2>
+                    <p className="text-sm text-gray-500">Solo aplica para Funciones 2 y 3</p>
                   </div>
-                  <div>
-                    <label className="form-label">Control del Hermano Mayor</label>
-                    <input
-                      className="form-input"
-                      value={controlMayor}
-                      onChange={(e) => setControlMayor(e.target.value)}
-                      placeholder="Ej. 67890"
-                    />
+                  <form onSubmit={handleCanje} className="space-y-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Control del Alumno Menor (canje)
+                        </label>
+                        <input
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                          value={controlMenor}
+                          onChange={(e) => setControlMenor(e.target.value)}
+                          placeholder="Ej. 12345"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Control del Hermano Mayor
+                        </label>
+                        <input
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                          value={controlMayor}
+                          onChange={(e) => setControlMayor(e.target.value)}
+                          placeholder="Ej. 67890"
+                        />
+                      </div>
+                    </div>
+
+                    {error && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                        {error}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-semibold py-3 rounded-lg hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      >
+                        {loading ? 'Calculando…' : 'Calcular Canje'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const ok = window.confirm('¿Confirmas realizar el canje (ajustar precios y marcar pagado)?');
+                          if (!ok) return;
+                          callCanje(true);
+                        }}
+                        disabled={loading}
+                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 rounded-lg hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      >
+                        {loading ? 'Procesando…' : 'Realizar Canje'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Resultados */}
+                {result && (
+                  <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-indigo-200/50">
+                    <h3 className="text-lg font-bold text-gray-900 mb-5">Resultado del Cálculo</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl p-5 border-2 border-indigo-300 shadow-md">
+                        <div className="text-sm text-indigo-700 font-medium mb-1">Monto Hermano Mayor</div>
+                        <div className="text-2xl font-bold text-indigo-900">{formatCurrency(result?.total_mayor)}</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-pink-100 to-rose-100 rounded-xl p-5 border-2 border-pink-300 shadow-md">
+                        <div className="text-sm text-pink-700 font-medium mb-1">Monto Hermano Menor</div>
+                        <div className="text-2xl font-bold text-pink-900">{formatCurrency(result?.total_menor)}</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl p-5 border-2 border-amber-300 shadow-md">
+                        <div className="text-sm text-amber-700 font-medium mb-1">Diferencia</div>
+                        <div className="text-2xl font-bold text-amber-900">{formatCurrency(result?.diferencia ?? (Number(result?.total_mayor||0) - Number(result?.total_menor||0)))}</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl p-5 border-2 border-emerald-400 shadow-lg">
+                        <div className="text-sm text-emerald-700 font-semibold mb-1">Monto a pagar</div>
+                        <div className="text-2xl font-bold text-emerald-900">{formatCurrency(Math.max(0, Number((result?.diferencia_aplicada ?? (Number(result?.total_mayor||0) - Number(result?.total_menor||0))) || 0)))}</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {error && <p className="text-sm text-red-600">{error}</p>}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {loading ? 'Calculando…' : 'Calcular Canje'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const ok = window.confirm('¿Confirmas realizar el canje (ajustar precios y marcar pagado)?');
-                      if (!ok) return;
-                      callCanje(true);
-                    }}
-                    disabled={loading}
-                    className="w-full bg-green-600 text-white font-semibold py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
-                  >
-                    {loading ? 'Procesando…' : 'Realizar Canje (ajustar y marcar pagado)'}
-                  </button>
-                </div>
-              </form>
-
-              {result && (
-                <div className="mt-6 bg-white/80 text-gray-800 border border-white/40 rounded-lg p-4">
-                  <h3 className="font-semibold mb-3">Resultado del Cálculo</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm">
-                    <div className="p-3 rounded bg-gray-50 border">
-                      <div className="text-gray-600">Monto Hermano Mayor</div>
-                      <div className="font-semibold">{formatCurrency(result?.total_mayor)}</div>
+                {/* Mapa para canje */}
+                <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-indigo-200/50">
+                  <div className="flex flex-wrap items-center gap-4 mb-6">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-700">Función</label>
+                      <select 
+                        className="px-4 py-2 rounded-lg bg-white text-gray-900 border border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" 
+                        value={funcionMapa} 
+                        onChange={(e) => setFuncionMapa(parseInt(e.target.value))}
+                      >
+                        <option value={1}>1</option>
+                        <option value={2}>2</option>
+                        <option value={3}>3</option>
+                      </select>
                     </div>
-                    <div className="p-3 rounded bg-gray-50 border">
-                      <div className="text-gray-600">Monto Hermano Menor</div>
-                      <div className="font-semibold">{formatCurrency(result?.total_menor)}</div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-700">Zona</label>
+                      <select 
+                        className="px-4 py-2 rounded-lg bg-white text-gray-900 border border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" 
+                        value={sectionMapa} 
+                        onChange={(e) => setSectionMapa(parseInt(e.target.value))}
+                      >
+                        <option value={1}>Oro</option>
+                        <option value={2}>Plata</option>
+                        <option value={3}>Bronce (Palcos)</option>
+                        <option value={4}>Bronce (Balcón)</option>
+                      </select>
                     </div>
-                    <div className="p-3 rounded bg-gray-50 border">
-                      <div className="text-gray-600">Diferencia (Mayor - Menor)</div>
-                      <div className="font-semibold">{formatCurrency(result?.diferencia ?? (Number(result?.total_mayor||0) - Number(result?.total_menor||0)))}</div>
-                    </div>
-                    <div className="p-3 rounded bg-green-50 border border-green-200">
-                      <div className="text-green-700">Monto a pagar</div>
-                      <div className="font-bold text-green-800">{formatCurrency(Math.max(0, Number((result?.diferencia_aplicada ?? (Number(result?.total_mayor||0) - Number(result?.total_menor||0))) || 0)))}</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Mapa para canje */}
-              <div className="mt-6">
-                <div className="flex flex-wrap items-center gap-3 mb-3">
-                  <label className="text-sm text-white/90">Función</label>
-                  <select className="px-3 py-2 rounded-md bg-white text-gray-900 border border-white/30 shadow-sm" value={funcionMapa} onChange={(e) => setFuncionMapa(parseInt(e.target.value))}>
-                    <option value={1}>1</option>
-                    <option value={2}>2</option>
-                    <option value={3}>3</option>
-                  </select>
-                  <label className="text-sm text-white/90 ml-2">Zona</label>
-                  <select className="px-3 py-2 rounded-md bg-white text-gray-900 border border-white/30 shadow-sm" value={sectionMapa} onChange={(e) => setSectionMapa(parseInt(e.target.value))}>
-                    <option value={1}>Oro</option>
-                    <option value={2}>Plata</option>
-                    <option value={3}>Bronce (Palcos)</option>
-                    <option value={4}>Bronce (Balcón)</option>
-                  </select>
-                  <button type="button" className="px-3 py-2 rounded-md bg-white text-gray-900 border border-white/30 shadow-sm hover:bg-gray-50" onClick={() => cargarOcupacion(funcionMapa)}>Actualizar</button>
-                  <button
-                    type="button"
-                    className="text-sm px-3 py-1 bg-blue-600 text-white rounded"
-                    onClick={async () => {
-                      const ids: string[] = [];
-                      if (controlMayor) ids.push(controlMayor);
-                      if (controlMenor) ids.push(controlMenor);
-                      const resaltadosTmp: { fila: string; asiento: number; color?: 'blue' | 'orange' }[] = [];
-                      for (const id of ids) {
-                        const r = await fetch('/api/admin/reservas-por-control', {
-                          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-user': 'admin', 'x-admin-pass': 'Admin2025.' }, body: JSON.stringify({ control: id })
-                        });
-                        const d = await r.json();
-                        if (r.ok && d.success) {
-                          const isFirst = ids.indexOf(id) === 0;
-                          (d.data || []).filter((x: ReservaPorControl) => x.nivel === funcionMapa).forEach((x: ReservaPorControl) => resaltadosTmp.push({ fila: x.fila, asiento: x.asiento, color: isFirst ? 'blue' : 'orange' }));
-                        }
-                      }
-                      setResaltados(resaltadosTmp);
-                    }}
-                  >Resaltar canje</button>
-                </div>
-                <AdminSeatMap
-                  section={sectionMapa}
-                  ocupados={(ocupacion || []).filter((o: OcupacionItem) => {
-                    const z = (o.zona || '').toString().toLowerCase();
-                    if (sectionMapa === 1) return z === 'oro' || z.includes('oro');
-                    if (sectionMapa === 2) return z === 'plata' || z.includes('plata');
-                    return z.includes('bronce');
-                  })}
-                  resaltados={resaltados}
-                />
-              </div>
-              </>
-              )}
-
-              {activeTab === 'pago' && (
-              <>
-              <div className="my-8 h-px bg-gray-200" />
-
-              <h2 className="text-lg font-semibold mb-4">Pago por Control</h2>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="form-label">Control del Alumno</label>
-                    <input
-                      className="form-input"
-                      value={controlPago}
-                      onChange={(e) => setControlPago(e.target.value)}
-                      placeholder="Ej. 12345"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={async () => {
-                      setPagoResultado(null);
-                      setError(null);
-                      if (!controlPago) {
-                        setError('Ingresa el control del alumno');
-                        return;
-                      }
-                      const confirmar = window.confirm('¿Confirmas marcar como pagados los boletos de este alumno?');
-                      if (!confirmar) return;
-                      setLoading(true);
-                      try {
-                        const res = await fetch('/api/admin/pagar', {
-                          method: 'POST',
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'x-admin-user': 'admin',
-                            'x-admin-pass': 'Admin2025.',
-                          },
-                          body: JSON.stringify({ control: controlPago })
-                        });
-                        const data = await res.json();
-                        if (!res.ok || !data.success) {
-                          setError(data.message || 'No fue posible realizar el pago');
-                        } else {
-                          setPagoResultado(data.data);
-                        }
-                      } catch {
-                        setError('Error de red');
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    className="w-full bg-emerald-600 text-white font-semibold py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    {loading ? 'Procesando…' : 'Pagar'}
-                  </button>
-                </div>
-
-                {/* Mapa para pago */}
-                <div className="mt-4">
-                  <div className="flex flex-wrap items-center gap-3 mb-3">
-                    <label className="text-sm text-white/90">Función</label>
-                    <select className="px-3 py-2 rounded-md bg-white text-gray-900 border border-white/30 shadow-sm" value={funcionMapa} onChange={(e) => setFuncionMapa(parseInt(e.target.value))}>
-                      <option value={1}>1</option>
-                      <option value={2}>2</option>
-                      <option value={3}>3</option>
-                    </select>
-                    <label className="text-sm text-white/90 ml-2">Zona</label>
-                    <select className="px-3 py-2 rounded-md bg-white text-gray-900 border border-white/30 shadow-sm" value={sectionMapa} onChange={(e) => setSectionMapa(parseInt(e.target.value))}>
-                      <option value={1}>Oro</option>
-                      <option value={2}>Plata</option>
-                      <option value={3}>Bronce (Palcos)</option>
-                      <option value={4}>Bronce (Balcón)</option>
-                    </select>
-                    <button type="button" className="px-3 py-2 rounded-md bg-white text-gray-900 border border-white/30 shadow-sm hover:bg-gray-50" onClick={() => cargarOcupacion(funcionMapa)}>Actualizar</button>
+                    <button 
+                      type="button" 
+                      className="px-4 py-2 rounded-lg bg-indigo-100 text-indigo-700 font-medium hover:bg-indigo-200 transition-colors shadow-sm" 
+                      onClick={() => cargarOcupacion(funcionMapa)}
+                    >
+                      Actualizar
+                    </button>
                     <button
                       type="button"
-                      className="text-sm px-3 py-1 bg-blue-600 text-white rounded"
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
                       onClick={async () => {
-                        setResaltados([]);
-                        if (!controlPago) return;
-                        const r = await fetch('/api/admin/reservas-por-control', {
-                          method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-user': 'admin', 'x-admin-pass': 'Admin2025.' }, body: JSON.stringify({ control: controlPago })
-                        });
-                        const d = await r.json();
-                        if (r.ok && d.success) {
-                          const rs = (d.data || []).filter((x: ReservaPorControl) => x.nivel === funcionMapa).map((x: ReservaPorControl) => ({ fila: x.fila, asiento: x.asiento, color: 'blue' as const }));
-                          setResaltados(rs);
+                        const ids: string[] = [];
+                        if (controlMayor) ids.push(controlMayor);
+                        if (controlMenor) ids.push(controlMenor);
+                        const resaltadosTmp: { fila: string; asiento: number; color?: 'blue' | 'orange' }[] = [];
+                        for (const id of ids) {
+                          const r = await fetch('/api/admin/reservas-por-control', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-user': 'admin', 'x-admin-pass': 'Admin2025.' }, body: JSON.stringify({ control: id })
+                          });
+                          const d = await r.json();
+                          if (r.ok && d.success) {
+                            const isFirst = ids.indexOf(id) === 0;
+                            (d.data || []).filter((x: ReservaPorControl) => x.nivel === funcionMapa).forEach((x: ReservaPorControl) => resaltadosTmp.push({ fila: x.fila, asiento: x.asiento, color: isFirst ? 'blue' : 'orange' }));
+                          }
                         }
+                        setResaltados(resaltadosTmp);
                       }}
-                    >Resaltar a pagar</button>
+                    >
+                      Resaltar canje
+                    </button>
                   </div>
                   <AdminSeatMap
                     section={sectionMapa}
@@ -467,34 +464,254 @@ export default function AdminPage() {
                     resaltados={resaltados}
                   />
                 </div>
+              </div>
+              )}
 
+              {activeTab === 'pago' && (
+              <div className="space-y-6">
+                {/* Formulario de Pago */}
+                <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-indigo-200/50">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">Pago por Control</h2>
+                    <p className="text-sm text-gray-500">Marcar boletos como pagados por número de control</p>
+                  </div>
+                  <div className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Control del Alumno
+                      </label>
+                      <input
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                        value={controlPago}
+                        onChange={(e) => setControlPago(e.target.value)}
+                        placeholder="Ej. 12345"
+                      />
+                    </div>
+                    {error && (
+                      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                        {error}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={async () => {
+                        setPagoResultado(null);
+                        setError(null);
+                        if (!controlPago) {
+                          setError('Ingresa el control del alumno');
+                          return;
+                        }
+                        const confirmar = window.confirm('¿Confirmas marcar como pagados los boletos de este alumno?');
+                        if (!confirmar) return;
+                        setLoading(true);
+                        try {
+                          const res = await fetch('/api/admin/pagar', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'x-admin-user': 'admin',
+                              'x-admin-pass': 'Admin2025.',
+                            },
+                            body: JSON.stringify({ control: controlPago })
+                          });
+                          const data = await res.json();
+                          if (!res.ok || !data.success) {
+                            setError(data.message || 'No fue posible realizar el pago');
+                          } else {
+                            setPagoResultado(data.data);
+                          }
+                        } catch {
+                          setError('Error de red');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 rounded-lg hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    >
+                      {loading ? 'Procesando…' : 'Marcar como Pagado'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Resultado del Pago */}
                 {pagoResultado && (
-                  <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-blue-700 mb-2">Pago realizado</h3>
-                    <pre className="text-sm overflow-auto whitespace-pre-wrap">{JSON.stringify(pagoResultado, null, 2)}</pre>
+                  <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-indigo-200/50">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
+                        <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900">Pago realizado exitosamente</h3>
+                        <p className="text-sm text-gray-500">Boletos marcados como pagados</p>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <pre className="text-sm text-gray-700 overflow-auto whitespace-pre-wrap">{JSON.stringify(pagoResultado, null, 2)}</pre>
+                    </div>
                   </div>
                 )}
+
+                {/* Mapa para pago */}
+                <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-indigo-200/50">
+                  <div className="flex flex-wrap items-center gap-4 mb-6">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-700">Función</label>
+                      <select 
+                        className="px-4 py-2 rounded-lg bg-white text-gray-900 border border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" 
+                        value={funcionMapa} 
+                        onChange={(e) => setFuncionMapa(parseInt(e.target.value))}
+                      >
+                        <option value={1}>1</option>
+                        <option value={2}>2</option>
+                        <option value={3}>3</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-700">Zona</label>
+                      <select 
+                        className="px-4 py-2 rounded-lg bg-white text-gray-900 border border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" 
+                        value={sectionMapa} 
+                        onChange={(e) => setSectionMapa(parseInt(e.target.value))}
+                      >
+                        <option value={1}>Oro</option>
+                        <option value={2}>Plata</option>
+                        <option value={3}>Bronce (Palcos)</option>
+                        <option value={4}>Bronce (Balcón)</option>
+                      </select>
+                    </div>
+                    <button 
+                      type="button" 
+                      className="px-4 py-2 rounded-lg bg-indigo-100 text-indigo-700 font-medium hover:bg-indigo-200 transition-colors shadow-sm" 
+                      onClick={() => cargarOcupacion(funcionMapa)}
+                    >
+                      Actualizar
+                    </button>
+                    <button
+                      type="button"
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+                      onClick={async () => {
+                        setResaltados([]);
+                        if (!controlPago) return;
+                        try {
+                          const r = await fetch('/api/admin/reservas-por-control', {
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json', 'x-admin-user': 'admin', 'x-admin-pass': 'Admin2025.' }, 
+                            body: JSON.stringify({ control: controlPago })
+                          });
+                          const d = await r.json();
+                          if (r.ok && d.success) {
+                            const reservas = d.data || [];
+                            
+                            // Determinar función y zona de los boletos
+                            let pickedFuncion: number | null = null;
+                            let pickedZona: number | null = null;
+                            
+                            // Si hay reservas, usar la primera para determinar función y zona
+                            if (reservas.length > 0) {
+                              const primeraReserva = reservas[0];
+                              pickedFuncion = Number(primeraReserva.nivel);
+                              
+                              // Determinar zona basándose en el nombre de la zona
+                              const zonaTxt = (primeraReserva.zona || '').toString().toLowerCase();
+                              if (zonaTxt.includes('oro')) {
+                                pickedZona = 1;
+                              } else if (zonaTxt.includes('plata')) {
+                                pickedZona = 2;
+                              } else if (zonaTxt.includes('bronce')) {
+                                // Determinar si es Palcos o Balcón
+                                if (zonaTxt.includes('palco')) {
+                                  pickedZona = 3;
+                                } else {
+                                  pickedZona = 4;
+                                }
+                              }
+                            }
+                            
+                            // Actualizar función y zona si se encontraron
+                            if (pickedFuncion) {
+                              setFuncionMapa(pickedFuncion);
+                              setFuncionAnterior(pickedFuncion); // Actualizar función anterior para evitar limpiar resaltados
+                            }
+                            if (pickedZona) {
+                              setSectionMapa(pickedZona);
+                            }
+                            
+                            // Resaltar asientos de la función seleccionada (o la actual si no se encontró función)
+                            const funcionParaResaltar = pickedFuncion || funcionMapa;
+                            const rs = reservas
+                              .filter((x: ReservaPorControl) => Number(x.nivel) === funcionParaResaltar)
+                              .map((x: ReservaPorControl) => ({ fila: x.fila, asiento: x.asiento, color: 'blue' as const }));
+                            setResaltados(rs);
+                            
+                            // Cargar ocupación de la función actualizada
+                            if (pickedFuncion) {
+                              await cargarOcupacion(pickedFuncion);
+                            }
+                          }
+                        } catch {
+                          // Error al resaltar
+                        }
+                      }}
+                    >
+                      Resaltar a pagar
+                    </button>
+                  </div>
+                  <AdminSeatMap
+                    section={sectionMapa}
+                    ocupados={(ocupacion || []).filter((o: OcupacionItem) => {
+                      const z = (o.zona || '').toString().toLowerCase();
+                      if (sectionMapa === 1) return z === 'oro' || z.includes('oro');
+                      if (sectionMapa === 2) return z === 'plata' || z.includes('plata');
+                      return z.includes('bronce');
+                    })}
+                    resaltados={resaltados}
+                  />
+                </div>
               </div>
-              </>
               )}
 
               {activeTab === 'mapa' && (
-                <div className="mt-6">
-                  <div className="flex flex-wrap items-center gap-3 mb-3">
-                    <label className="text-sm text-gray-600">Función</label>
-                    <select className="px-3 py-2 rounded-md bg-white text-gray-900 border border-gray-300 shadow-sm" value={funcionMapa} onChange={(e) => setFuncionMapa(parseInt(e.target.value))}>
-                      <option value={1}>1</option>
-                      <option value={2}>2</option>
-                      <option value={3}>3</option>
-                    </select>
-                    <label className="text-sm text-gray-600 ml-2">Zona</label>
-                    <select className="px-3 py-2 rounded-md bg-white text-gray-900 border border-gray-300 shadow-sm" value={sectionMapa} onChange={(e) => setSectionMapa(parseInt(e.target.value))}>
-                      <option value={1}>Oro</option>
-                      <option value={2}>Plata</option>
-                      <option value={3}>Bronce (Palcos)</option>
-                      <option value={4}>Bronce (Balcón)</option>
-                    </select>
-                    <button type="button" className="px-3 py-2 rounded-md bg-white text-gray-900 border border-gray-300 shadow-sm hover:bg-gray-50" onClick={() => cargarOcupacion(funcionMapa)}>Actualizar</button>
+                <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-indigo-200/50">
+                  <div className="mb-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">Mapa General</h2>
+                    <p className="text-sm text-gray-500">Visualización de ocupación de asientos por función y zona</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-4 mb-6">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-700">Función</label>
+                      <select 
+                        className="px-4 py-2 rounded-lg bg-white text-gray-900 border border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" 
+                        value={funcionMapa} 
+                        onChange={(e) => setFuncionMapa(parseInt(e.target.value))}
+                      >
+                        <option value={1}>1</option>
+                        <option value={2}>2</option>
+                        <option value={3}>3</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-gray-700">Zona</label>
+                      <select 
+                        className="px-4 py-2 rounded-lg bg-white text-gray-900 border border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" 
+                        value={sectionMapa} 
+                        onChange={(e) => setSectionMapa(parseInt(e.target.value))}
+                      >
+                        <option value={1}>Oro</option>
+                        <option value={2}>Plata</option>
+                        <option value={3}>Bronce (Palcos)</option>
+                        <option value={4}>Bronce (Balcón)</option>
+                      </select>
+                    </div>
+                    <button 
+                      type="button" 
+                      className="px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-medium hover:from-indigo-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg" 
+                      onClick={() => cargarOcupacion(funcionMapa)}
+                    >
+                      Actualizar Mapa
+                    </button>
                   </div>
                   <AdminSeatMap
                     section={sectionMapa}

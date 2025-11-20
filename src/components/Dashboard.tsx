@@ -56,16 +56,6 @@ export const Dashboard: React.FC = () => {
   
   const hermanos = userData.hermanos;
   const alumnoRef = userData.alumnoRef;
-  
-  // Debug: Log de datos recibidos
-  console.log('🔍 Dashboard Debug - userData:', userData);
-  console.log('👥 Dashboard Debug - hermanos:', hermanos);
-  console.log('📏 Dashboard Debug - hermanos.length:', hermanos.length);
-  console.log('🔍 Dashboard Debug - alumnoRef actual:', alumnoRef);
-  
-  hermanos.forEach((hermano: HermanosData, index: number) => {
-    console.log(`  ${index + 1}. ${hermano.nombre} (Control: ${hermano.control}) - Es el alumno actual? ${hermano.control === alumnoRef}`);
-  });
 
   // Función para iniciar el proceso de eliminación (abre el modal)
   const iniciarEliminacion = (asiento: AsientoComprobante) => {
@@ -122,52 +112,7 @@ export const Dashboard: React.FC = () => {
     iniciarEliminacion(asiento);
   };
 
-  // Función para debug de hermanos
-  const debugHermanos = async () => {
-    try {
-      const response = await fetch(`/api/debug/hermanos?alumno_ref=${alumnoRef}`);
-      const result = await response.json();
-      
-      if (result.success) {
-        console.log('🔍 DEBUG HERMANOS - Resultado completo:', result.data);
-
-        const coincidencias = Array.isArray(result.data?.coincidencias) ? result.data.coincidencias : [];
-        console.log('🔍 DEBUG HERMANOS - Coincidencias detectadas:', coincidencias);
-
-        const detallesCoincidencias = coincidencias.map((coincidencia: {
-          control: number;
-          nombre: string;
-          coincidencias: {
-            telefonos: string[];
-            curps: string[];
-          };
-        }) => {
-          const partes: string[] = [];
-          if (coincidencia.coincidencias.telefonos.length > 0) {
-            partes.push(`Teléfono(s): ${coincidencia.coincidencias.telefonos.join(', ')}`);
-          }
-          if (coincidencia.coincidencias.curps.length > 0) {
-            partes.push(`CURP(s): ${coincidencia.coincidencias.curps.join(', ')}`);
-          }
-          if (partes.length === 0) {
-            partes.push('Sin coincidencias registradas');
-          }
-          return `${coincidencia.control} - ${coincidencia.nombre}\n  ${partes.join('\n  ')}`;
-        });
-
-        const mensajeCoincidencias = detallesCoincidencias.length > 0
-          ? `Coincidencias detectadas:\n\n${detallesCoincidencias.join('\n\n')}`
-          : 'No se encontraron coincidencias compartidas con otros alumnos.';
-
-        alert(`${mensajeCoincidencias}\n\nTotal hermanos detectados (incluye al alumno): ${result.data.totalHermanos}`);
-      } else {
-        alert('Error en debug: ' + result.message);
-      }
-    } catch (error) {
-      console.error('Error en debug hermanos:', error);
-      alert('Error al hacer debug de hermanos');
-    }
-  };
+  // La función de debug de hermanos se ha eliminado para limpiar el código.
 
   // Función para obtener reservas y mostrar comprobante
   const verMisBoletos = async () => {
@@ -214,7 +159,6 @@ export const Dashboard: React.FC = () => {
   // Si es usuario interno, usar función asignada directamente
   if (userData.isInternal && userData.funcionAsignada) {
     levelClose = userData.funcionAsignada;
-    console.log(`🔐 Usuario interno detectado - Función asignada: ${levelClose}`);
   } else {
     // Lógica normal para alumnos
     hermanos.forEach((hermano: HermanosData) => {
@@ -280,7 +224,6 @@ export const Dashboard: React.FC = () => {
   const validateDates = () => {
     // Usuarios internos siempre pueden reservar
     if (userData.isInternal) {
-      console.log('🔐 Usuario interno: siempre puede reservar');
       return true;
     }
     
@@ -319,32 +262,16 @@ export const Dashboard: React.FC = () => {
   };
 
   const renderAlumnosInfo = () => {
-    console.log('🔍 renderAlumnosInfo - hermanos originales:', hermanos);
-    console.log('🔍 renderAlumnosInfo - hermanos originales length:', hermanos.length);
-    
     const hermanosFiltrados = hermanos.filter(hermano => hermano.control !== 22222 && hermano.control !== 33333 && hermano.control !== 44444);
-    console.log('🔍 renderAlumnosInfo - hermanos filtrados:', hermanosFiltrados);
-    console.log('🔍 renderAlumnosInfo - hermanos filtrados length:', hermanosFiltrados.length);
-    
-    // Verificar si hay duplicados por control
     const controlesUnicos = new Set(hermanosFiltrados.map(h => h.control));
-    console.log('🔍 renderAlumnosInfo - controles únicos:', Array.from(controlesUnicos));
-    console.log('🔍 renderAlumnosInfo - hay duplicados?', controlesUnicos.size !== hermanosFiltrados.length);
     
     // Eliminar duplicados por control (mantener solo la primera ocurrencia)
     const hermanosSinDuplicados = hermanosFiltrados.filter((hermano, index, self) => {
       const firstIndex = self.findIndex(h => h.control === hermano.control);
-      const isDuplicate = index !== firstIndex;
-      if (isDuplicate) {
-        console.log(`🔍 renderAlumnosInfo - DUPLICADO DETECTADO: ${hermano.nombre} (Control: ${hermano.control}) - Index: ${index}, FirstIndex: ${firstIndex}`);
-      }
       return index === firstIndex;
     });
-    console.log('🔍 renderAlumnosInfo - hermanos sin duplicados:', hermanosSinDuplicados);
-    console.log('🔍 renderAlumnosInfo - hermanos sin duplicados length:', hermanosSinDuplicados.length);
     
     return hermanosSinDuplicados.map((hermano: HermanosData, index: number) => {
-      console.log(`🔍 renderAlumnosInfo - Procesando hermano ${index}:`, hermano);
         let aluNivel = "";
         
         // Si es usuario interno, usar función asignada directamente
@@ -355,7 +282,6 @@ export const Dashboard: React.FC = () => {
             3: '3ra Función'
           };
           aluNivel = nombresFunciones[userData.funcionAsignada || 1] || 'Función';
-          console.log(`🔐 Usuario interno - Función asignada: ${userData.funcionAsignada}`);
         } else {
           // Lógica normal para alumnos
           const nivel = hermano.nivel;
@@ -481,12 +407,10 @@ export const Dashboard: React.FC = () => {
                     // Convertir ambos a string para comparación (control puede ser string, alumnoRef puede ser número)
                     const alumnoActual = hermanos.find(h => String(h.control) === String(alumnoRef));
                     if (!alumnoActual) {
-                      console.log('🔍 Header - Alumno no encontrado. Buscando:', alumnoRef, 'En:', hermanos.map(h => h.control));
                       return '';
                     }
                     const nivel = alumnoActual.nivel;
                     const grado = alumnoActual.grado;
-                    console.log('🔍 Header - Alumno encontrado. Nivel:', nivel, 'Grado:', grado);
                     if (nivel === 1 || nivel === 2) {
                       return '🎭 1ra Función';
                     } else if (nivel === 3) {
@@ -668,18 +592,7 @@ export const Dashboard: React.FC = () => {
           </button>
         </div>
 
-        {/* Botón Debug Hermanos (temporal) */}
-        <div className="text-center mb-16">
-          <button 
-            onClick={debugHermanos}
-            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl hover:from-blue-700 hover:to-purple-700 transform hover:scale-[1.02] transition-all duration-300 shadow-lg hover:shadow-xl border border-white/10 hover:border-white/20 text-sm"
-          >
-            <span className="flex items-center space-x-2">
-              <span>🔍</span>
-              <span>Debug Hermanos</span>
-            </span>
-          </button>
-        </div>
+        {/* Botón de debug de hermanos eliminado para limpiar la interfaz en producción */}
 
         {/* Información de Alumnos */}
         <div className="bg-gradient-to-br from-white/95 to-slate-50/95 backdrop-blur-xl rounded-3xl p-10 shadow-2xl border border-slate-200/50 mb-16">

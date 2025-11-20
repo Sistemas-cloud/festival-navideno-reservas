@@ -32,15 +32,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       return;
     }
 
-    console.log('🔍 LoginForm - Iniciando login para control:', alumnoRef);
     const result = await login(parseInt(alumnoRef), clave);
-    console.log('🔍 LoginForm - Resultado del login:', result);
     
     if (result.success) {
-      console.log('✅ LoginForm - Login exitoso, llamando onLoginSuccess');
       onLoginSuccess();
     } else if (result.errorInfo?.isAccessDeniedByDate) {
-      console.log('🚫 LoginForm - Acceso denegado por fecha, mostrando modal');
       // Mostrar modal de acceso denegado
       setAccessDeniedInfo({
         fechaApertura: result.errorInfo.fechaApertura || '',
@@ -48,7 +44,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
       });
       setShowAccessDeniedModal(true);
     } else {
-      console.log('❌ LoginForm - Error en login (no es acceso denegado por fecha)');
       // El error ya se mostró en un alert dentro de useAuth
       // Pero podemos limpiar los campos si es necesario
       // setAlumnoRef('');

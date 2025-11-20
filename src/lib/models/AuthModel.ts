@@ -186,13 +186,7 @@ export class AuthModel {
         console.log('\n👨‍👩‍👧‍👦 No se encontraron hermanos registrados');
       }
       
-      // Información sobre boletos disponibles
-      console.log('\n🎫 ===== INFORMACIÓN DE BOLETOS =====');
-      console.log('📋 Secciones disponibles para reserva:');
-      console.log('  👑 ZONA ORO - Desde $200');
-      console.log('  🥈 ZONA PLATA - Desde $180');
-      console.log('  🏛️ BRONCE PALCOS - Desde $140');
-      console.log('  🏛️ BRONCE BALCÓN - Desde $140');
+  
       
       // Validaciones de fechas (usando hora de Monterrey)
       const today = getTodayInMonterrey();
