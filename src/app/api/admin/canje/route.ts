@@ -1,22 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getTodayInMonterrey, parseDateString } from '@/lib/utils/timezone';
+import { validateAdminCredentials } from '@/lib/config/adminUsers';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-  process.env.SUPABASE_SERVICE_ROLE_KEY as string
-);
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-function isAuthorized(req: NextRequest): boolean {
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Variables de entorno de Supabase no configuradas');
+  }
+
+  return createClient(supabaseUrl, supabaseKey);
+}
+
+function isAuthorized(req: NextRequest): { authorized: boolean; user?: any } {
   const user = req.headers.get('x-admin-user');
   const pass = req.headers.get('x-admin-pass');
-  return user === 'admin' && pass === 'Admin2025.';
+  if (!user || !pass) {
+    return { authorized: false };
+  }
+  const adminUser = validateAdminCredentials(user, pass);
+  if (!adminUser) {
+    return { authorized: false };
+  }
+  return { authorized: true, user: adminUser };
 }
 
 export async function POST(req: NextRequest) {
   try {
-    if (!isAuthorized(req)) {
+    const auth = isAuthorized(req);
+    if (!auth.authorized || !auth.user) {
       return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 });
     }
+    const supabase = getSupabaseClient();
 
     const body = await req.json();
     const controlMenorRaw = body?.control_menor;
@@ -39,7 +56,7 @@ export async function POST(req: NextRequest) {
     // Traer TODAS las reservas del hermano menor (sin filtrar por función) para calcular el precio total
     const { data: reservasMenorTodas, error: errMenorTodas } = await supabase
       .from('reservas')
-      .select('id, referencia, fila, asiento, nivel, precio, estado')
+      .select('id, referencia, fila, asiento, nivel, precio, estado, fecha_pago')
       .eq('referencia', controlMenor)
       .eq('estado', 'reservado');
 
@@ -50,7 +67,7 @@ export async function POST(req: NextRequest) {
     // Traer TODAS las reservas del hermano mayor (sin filtrar por función) para calcular el precio total
     const { data: reservasMayorTodas, error: errMayorTodas } = await supabase
       .from('reservas')
-      .select('id, referencia, fila, asiento, nivel, precio, estado')
+      .select('id, referencia, fila, asiento, nivel, precio, estado, fecha_pago')
       .eq('referencia', controlMayor)
       .eq('estado', 'reservado');
 
@@ -64,6 +81,39 @@ export async function POST(req: NextRequest) {
     // Verificar que el hermano mayor tenga al menos una reserva en función 2 o 3 para permitir el canje
     if (!reservasMayorCanje || reservasMayorCanje.length === 0) {
       return NextResponse.json({ success: false, message: 'El hermano mayor no tiene reservas aplicables (función 2 o 3).' }, { status: 400 });
+    }
+
+    // VALIDACIÓN: Verificar que la fecha de pago coincida con el día actual (solo si se va a realizar el canje)
+    if (realizarCanje) {
+      const today = getTodayInMonterrey();
+      const fechaPagoReserva = reservasMayorCanje[0].fecha_pago;
+      
+      if (!fechaPagoReserva) {
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Las reservas del hermano mayor no tienen fecha de pago asignada. No se puede procesar el canje.' 
+        }, { status: 400 });
+      }
+
+      // Comparar fechas (solo día, sin hora)
+      const fechaPago = parseDateString(fechaPagoReserva);
+      const fechaPagoTime = fechaPago.getTime();
+      const todayTime = today.getTime();
+
+      if (fechaPagoTime !== todayTime) {
+        // Formatear fecha para mostrar al usuario
+        const fechaFormateada = fechaPago.toLocaleDateString('es-MX', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        
+        return NextResponse.json({ 
+          success: false, 
+          message: `La fecha de pago asignada es el ${fechaFormateada}. Solo se puede procesar el canje en esa fecha.` 
+        }, { status: 400 });
+      }
     }
 
     // Calcular totales: ambos incluyen TODAS sus reservas (funciones 1, 2 y 3)

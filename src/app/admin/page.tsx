@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { AdminSeatMap } from '@/components/admin/AdminSeatMap';
+import { validateAdminCredentials, canAccessFunction, type AdminUser } from '@/lib/config/adminUsers';
 
 interface CanjeResult {
   control_menor: number;
@@ -25,6 +26,7 @@ interface CanjeResult {
 interface PagoResult {
   control: number;
   pagadas: number;
+  total_a_pagar?: number;
 }
 
 interface OcupacionItem {
@@ -49,6 +51,7 @@ export default function AdminPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isAuth, setIsAuth] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
 
   const [controlMenor, setControlMenor] = useState('');
   const [controlMayor, setControlMayor] = useState('');
@@ -59,18 +62,45 @@ export default function AdminPage() {
   // Pago por control
   const [controlPago, setControlPago] = useState('');
   const [pagoResultado, setPagoResultado] = useState<PagoResult | null>(null);
+  const [montoRecibidoPago, setMontoRecibidoPago] = useState('');
+  const [totalAPagarPago, setTotalAPagarPago] = useState<number | null>(null);
+  const [loadingConsultaPago, setLoadingConsultaPago] = useState(false);
   const [funcionMapa, setFuncionMapa] = useState<number>(1);
+  
+  // Canje
+  const [montoRecibidoCanje, setMontoRecibidoCanje] = useState('');
   const [sectionMapa, setSectionMapa] = useState<number>(1);
   const [ocupacion, setOcupacion] = useState<OcupacionItem[]>([]);
   const [resaltados, setResaltados] = useState<{ fila: string; asiento: number; color?: 'blue' | 'orange' }[]>([]);
   const [activeTab, setActiveTab] = useState<'canje' | 'pago' | 'mapa'>('canje');
   const [funcionAnterior, setFuncionAnterior] = useState<number>(1);
 
+  const getAdminHeaders = () => {
+    if (!currentUser) return {};
+    return {
+      'Content-Type': 'application/json',
+      'x-admin-user': currentUser.username,
+      'x-admin-pass': currentUser.password,
+    };
+  };
+
+  // Obtener funciones disponibles según el usuario
+  const funcionesDisponibles = useMemo(() => {
+    if (!currentUser) return [1, 2, 3];
+    // Admin tiene acceso a todas
+    if (!currentUser.funcion) return [1, 2, 3];
+    // Otros usuarios solo su función
+    return [currentUser.funcion];
+  }, [currentUser]);
+
   const cargarOcupacion = async (funcion: number) => {
+    if (!currentUser || !canAccessFunction(currentUser, funcion)) {
+      return;
+    }
     try {
       const res = await fetch('/api/admin/ocupacion', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-user': 'admin', 'x-admin-pass': 'Admin2025.' },
+        headers: getAdminHeaders(),
         body: JSON.stringify({ funcion })
       });
       const data = await res.json();
@@ -92,13 +122,18 @@ export default function AdminPage() {
     }
   }, [funcionMapa, funcionAnterior]);
 
-  const isCredsValid = useMemo(() => username === 'admin' && password === 'Admin2025.', [username, password]);
-
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isCredsValid) {
+    const user = validateAdminCredentials(username, password);
+    if (user) {
+      setCurrentUser(user);
       setIsAuth(true);
       setError(null);
+      // Si el usuario tiene una función específica, establecerla como función inicial
+      if (user.funcion) {
+        setFuncionMapa(user.funcion);
+        setFuncionAnterior(user.funcion);
+      }
     } else {
       setError('Credenciales inválidas');
     }
@@ -115,11 +150,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/canje', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-user': 'admin',
-          'x-admin-pass': 'Admin2025.',
-        },
+        headers: getAdminHeaders(),
         body: JSON.stringify({
           control_menor: controlMenor,
           control_mayor: controlMayor,
@@ -145,7 +176,7 @@ export default function AdminPage() {
             for (const entry of ids) {
               const r = await fetch('/api/admin/reservas-por-control', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-admin-user': 'admin', 'x-admin-pass': 'Admin2025.' },
+                headers: getAdminHeaders(),
                 body: JSON.stringify({ control: entry.id })
               });
               const d = await r.json();
@@ -260,12 +291,25 @@ export default function AdminPage() {
                     <h2 className="text-2xl font-bold text-white mb-1">Panel Administrativo</h2>
                     <p className="text-indigo-100 text-sm">Gestión de canjes, pagos y visualización de mapas</p>
                   </div>
-                  <button
-                    onClick={() => setIsAuth(false)}
-                    className="px-4 py-2 text-sm font-medium text-indigo-600 bg-white rounded-lg hover:bg-indigo-50 transition-colors shadow-md"
-                  >
-                    Cerrar sesión
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-white">{currentUser?.nombre}</p>
+                      <p className="text-xs text-indigo-100">{currentUser?.descripcion}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsAuth(false);
+                        setCurrentUser(null);
+                        setUsername('');
+                        setPassword('');
+                        setFuncionMapa(1);
+                        setFuncionAnterior(1);
+                      }}
+                      className="px-4 py-2 text-sm font-medium text-indigo-600 bg-white rounded-lg hover:bg-indigo-50 transition-colors shadow-md"
+                    >
+                      Cerrar sesión
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -356,12 +400,33 @@ export default function AdminPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const ok = window.confirm('¿Confirmas realizar el canje (ajustar precios y marcar pagado)?');
+                          if (!result || result.diferencia_aplicada <= 0) {
+                            const ok = window.confirm('¿Confirmas realizar el canje (ajustar precios y marcar pagado)?');
+                            if (!ok) return;
+                            callCanje(true);
+                            return;
+                          }
+                          
+                          // Si hay monto a pagar, validar monto recibido
+                          if (!montoRecibidoCanje || Number(montoRecibidoCanje) < result.diferencia_aplicada) {
+                            setError('El monto recibido debe ser mayor o igual al monto a pagar');
+                            return;
+                          }
+                          
+                          const cambio = Number(montoRecibidoCanje) - result.diferencia_aplicada;
+                          const ok = window.confirm(
+                            `¿Confirmas realizar el canje (ajustar precios y marcar pagado)?\n\n` +
+                            `Monto a pagar: ${formatCurrency(result.diferencia_aplicada)}\n` +
+                            `Monto recibido: ${formatCurrency(Number(montoRecibidoCanje))}\n` +
+                            `Cambio: ${formatCurrency(cambio)}`
+                          );
                           if (!ok) return;
                           callCanje(true);
+                          // Limpiar monto recibido después del canje
+                          setMontoRecibidoCanje('');
                         }}
-                        disabled={loading}
-                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 rounded-lg hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                        disabled={loading || (result && result.diferencia_aplicada > 0 && (!montoRecibidoCanje || Number(montoRecibidoCanje) < result.diferencia_aplicada))}
+                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 rounded-lg hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                       >
                         {loading ? 'Procesando…' : 'Realizar Canje'}
                       </button>
@@ -391,6 +456,48 @@ export default function AdminPage() {
                         <div className="text-2xl font-bold text-emerald-900">{formatCurrency(Math.max(0, Number((result?.diferencia_aplicada ?? (Number(result?.total_mayor||0) - Number(result?.total_menor||0))) || 0)))}</div>
                       </div>
                     </div>
+
+                    {/* Campos de pago para canje */}
+                    {result && result.diferencia_aplicada > 0 && (
+                      <div className="mt-6 space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Monto Recibido
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none text-lg font-semibold"
+                            value={montoRecibidoCanje}
+                            onChange={(e) => setMontoRecibidoCanje(e.target.value)}
+                            placeholder="0.00"
+                          />
+                        </div>
+
+                        {/* Mostrar Cambio */}
+                        {montoRecibidoCanje && Number(montoRecibidoCanje) > 0 && (
+                          <div className={`rounded-xl p-5 border-2 ${
+                            Number(montoRecibidoCanje) >= result.diferencia_aplicada
+                              ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200'
+                              : 'bg-gradient-to-br from-red-50 to-rose-50 border-red-200'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm text-gray-600 font-medium mb-1">
+                                  {Number(montoRecibidoCanje) >= result.diferencia_aplicada ? 'Cambio a Devolver' : 'Falta por Pagar'}
+                                </p>
+                                <p className={`text-3xl font-bold ${
+                                  Number(montoRecibidoCanje) >= result.diferencia_aplicada ? 'text-emerald-900' : 'text-red-900'
+                                }`}>
+                                  {formatCurrency(Math.abs(Number(montoRecibidoCanje) - result.diferencia_aplicada))}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -403,10 +510,11 @@ export default function AdminPage() {
                         className="px-4 py-2 rounded-lg bg-white text-gray-900 border border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" 
                         value={funcionMapa} 
                         onChange={(e) => setFuncionMapa(parseInt(e.target.value))}
+                        disabled={funcionesDisponibles.length === 1}
                       >
-                        <option value={1}>1</option>
-                        <option value={2}>2</option>
-                        <option value={3}>3</option>
+                        {funcionesDisponibles.includes(1) && <option value={1}>1</option>}
+                        {funcionesDisponibles.includes(2) && <option value={2}>2</option>}
+                        {funcionesDisponibles.includes(3) && <option value={3}>3</option>}
                       </select>
                     </div>
                     <div className="flex items-center gap-2">
@@ -439,7 +547,7 @@ export default function AdminPage() {
                         const resaltadosTmp: { fila: string; asiento: number; color?: 'blue' | 'orange' }[] = [];
                         for (const id of ids) {
                           const r = await fetch('/api/admin/reservas-por-control', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-user': 'admin', 'x-admin-pass': 'Admin2025.' }, body: JSON.stringify({ control: id })
+                            method: 'POST', headers: getAdminHeaders(), body: JSON.stringify({ control: id })
                           });
                           const d = await r.json();
                           if (r.ok && d.success) {
@@ -480,13 +588,106 @@ export default function AdminPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Control del Alumno
                       </label>
-                      <input
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
-                        value={controlPago}
-                        onChange={(e) => setControlPago(e.target.value)}
-                        placeholder="Ej. 12345"
-                      />
+                      <div className="flex gap-2">
+                        <input
+                          className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                          value={controlPago}
+                          onChange={(e) => {
+                            setControlPago(e.target.value);
+                            setTotalAPagarPago(null);
+                            setMontoRecibidoPago('');
+                            setPagoResultado(null);
+                          }}
+                          placeholder="Ej. 12345"
+                        />
+                        <button
+                          type="button"
+                          disabled={loadingConsultaPago || !controlPago}
+                          onClick={async () => {
+                            setError(null);
+                            setTotalAPagarPago(null);
+                            setLoadingConsultaPago(true);
+                            try {
+                              // Primero consultar las reservas para obtener el total
+                              const resConsulta = await fetch('/api/admin/reservas-por-control', {
+                                method: 'POST',
+                                headers: getAdminHeaders(),
+                                body: JSON.stringify({ control: controlPago })
+                              });
+                              const dataConsulta = await resConsulta.json();
+                              if (resConsulta.ok && dataConsulta.success) {
+                                // Calcular total sumando los precios de las reservas pendientes
+                                const reservasPendientes = (dataConsulta.data || []).filter((r: any) => r.estado === 'reservado');
+                                const total = reservasPendientes.reduce((sum: number, r: any) => sum + (Number(r.precio) || 0), 0);
+                                setTotalAPagarPago(total);
+                              } else {
+                                setError('No se encontraron reservas pendientes para este control');
+                              }
+                            } catch {
+                              setError('Error al consultar reservas');
+                            } finally {
+                              setLoadingConsultaPago(false);
+                            }
+                          }}
+                          className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all font-medium"
+                        >
+                          {loadingConsultaPago ? 'Consultando…' : 'Consultar Total'}
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Mostrar Total a Pagar */}
+                    {totalAPagarPago !== null && (
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border-2 border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-600 font-medium mb-1">Total a Pagar</p>
+                            <p className="text-3xl font-bold text-blue-900">{formatCurrency(totalAPagarPago)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Campo para monto recibido */}
+                    {totalAPagarPago !== null && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Monto Recibido
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none text-lg font-semibold"
+                          value={montoRecibidoPago}
+                          onChange={(e) => setMontoRecibidoPago(e.target.value)}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    )}
+
+                    {/* Mostrar Cambio */}
+                    {totalAPagarPago !== null && montoRecibidoPago && Number(montoRecibidoPago) > 0 && (
+                      <div className={`rounded-xl p-5 border-2 ${
+                        Number(montoRecibidoPago) >= totalAPagarPago
+                          ? 'bg-gradient-to-br from-emerald-50 to-green-50 border-emerald-200'
+                          : 'bg-gradient-to-br from-red-50 to-rose-50 border-red-200'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-600 font-medium mb-1">
+                              {Number(montoRecibidoPago) >= totalAPagarPago ? 'Cambio a Devolver' : 'Falta por Pagar'}
+                            </p>
+                            <p className={`text-3xl font-bold ${
+                              Number(montoRecibidoPago) >= totalAPagarPago ? 'text-emerald-900' : 'text-red-900'
+                            }`}>
+                              {formatCurrency(Math.abs(Number(montoRecibidoPago) - totalAPagarPago))}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {error && (
                       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                         {error}
@@ -494,7 +695,7 @@ export default function AdminPage() {
                     )}
                     <button
                       type="button"
-                      disabled={loading}
+                      disabled={loading || !controlPago || totalAPagarPago === null || !montoRecibidoPago || Number(montoRecibidoPago) < totalAPagarPago}
                       onClick={async () => {
                         setPagoResultado(null);
                         setError(null);
@@ -502,17 +703,23 @@ export default function AdminPage() {
                           setError('Ingresa el control del alumno');
                           return;
                         }
-                        const confirmar = window.confirm('¿Confirmas marcar como pagados los boletos de este alumno?');
+                        if (!montoRecibidoPago || Number(montoRecibidoPago) < (totalAPagarPago || 0)) {
+                          setError('El monto recibido debe ser mayor o igual al total a pagar');
+                          return;
+                        }
+                        const cambio = Number(montoRecibidoPago) - (totalAPagarPago || 0);
+                        const confirmar = window.confirm(
+                          `¿Confirmas marcar como pagados los boletos de este alumno?\n\n` +
+                          `Total a pagar: ${formatCurrency(totalAPagarPago || 0)}\n` +
+                          `Monto recibido: ${formatCurrency(Number(montoRecibidoPago))}\n` +
+                          `Cambio: ${formatCurrency(cambio)}`
+                        );
                         if (!confirmar) return;
                         setLoading(true);
                         try {
                           const res = await fetch('/api/admin/pagar', {
                             method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json',
-                              'x-admin-user': 'admin',
-                              'x-admin-pass': 'Admin2025.',
-                            },
+                            headers: getAdminHeaders(),
                             body: JSON.stringify({ control: controlPago })
                           });
                           const data = await res.json();
@@ -520,6 +727,10 @@ export default function AdminPage() {
                             setError(data.message || 'No fue posible realizar el pago');
                           } else {
                             setPagoResultado(data.data);
+                            // Limpiar campos después del pago exitoso
+                            setMontoRecibidoPago('');
+                            setTotalAPagarPago(null);
+                            setControlPago('');
                           }
                         } catch {
                           setError('Error de red');
@@ -527,7 +738,7 @@ export default function AdminPage() {
                           setLoading(false);
                         }
                       }}
-                      className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 rounded-lg hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                      className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 rounded-lg hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                     >
                       {loading ? 'Procesando…' : 'Marcar como Pagado'}
                     </button>
@@ -537,7 +748,7 @@ export default function AdminPage() {
                 {/* Resultado del Pago */}
                 {pagoResultado && (
                   <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-indigo-200/50">
-                    <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-center gap-3 mb-6">
                       <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
                         <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -548,8 +759,27 @@ export default function AdminPage() {
                         <p className="text-sm text-gray-500">Boletos marcados como pagados</p>
                       </div>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <pre className="text-sm text-gray-700 overflow-auto whitespace-pre-wrap">{JSON.stringify(pagoResultado, null, 2)}</pre>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                        <p className="text-sm text-blue-700 font-medium mb-1">Boletos Pagados</p>
+                        <p className="text-2xl font-bold text-blue-900">{pagoResultado.pagadas}</p>
+                      </div>
+                      {pagoResultado.total_a_pagar !== undefined && (
+                        <>
+                          <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-200">
+                            <p className="text-sm text-indigo-700 font-medium mb-1">Total Pagado</p>
+                            <p className="text-2xl font-bold text-indigo-900">{formatCurrency(pagoResultado.total_a_pagar)}</p>
+                          </div>
+                          {montoRecibidoPago && Number(montoRecibidoPago) > (pagoResultado.total_a_pagar || 0) && (
+                            <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
+                              <p className="text-sm text-emerald-700 font-medium mb-1">Cambio Devuelto</p>
+                              <p className="text-2xl font-bold text-emerald-900">
+                                {formatCurrency(Number(montoRecibidoPago) - (pagoResultado.total_a_pagar || 0))}
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -563,10 +793,11 @@ export default function AdminPage() {
                         className="px-4 py-2 rounded-lg bg-white text-gray-900 border border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" 
                         value={funcionMapa} 
                         onChange={(e) => setFuncionMapa(parseInt(e.target.value))}
+                        disabled={funcionesDisponibles.length === 1}
                       >
-                        <option value={1}>1</option>
-                        <option value={2}>2</option>
-                        <option value={3}>3</option>
+                        {funcionesDisponibles.includes(1) && <option value={1}>1</option>}
+                        {funcionesDisponibles.includes(2) && <option value={2}>2</option>}
+                        {funcionesDisponibles.includes(3) && <option value={3}>3</option>}
                       </select>
                     </div>
                     <div className="flex items-center gap-2">
@@ -598,7 +829,7 @@ export default function AdminPage() {
                         try {
                           const r = await fetch('/api/admin/reservas-por-control', {
                             method: 'POST', 
-                            headers: { 'Content-Type': 'application/json', 'x-admin-user': 'admin', 'x-admin-pass': 'Admin2025.' }, 
+                            headers: getAdminHeaders(), 
                             body: JSON.stringify({ control: controlPago })
                           });
                           const d = await r.json();
@@ -686,10 +917,11 @@ export default function AdminPage() {
                         className="px-4 py-2 rounded-lg bg-white text-gray-900 border border-gray-300 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none" 
                         value={funcionMapa} 
                         onChange={(e) => setFuncionMapa(parseInt(e.target.value))}
+                        disabled={funcionesDisponibles.length === 1}
                       >
-                        <option value={1}>1</option>
-                        <option value={2}>2</option>
-                        <option value={3}>3</option>
+                        {funcionesDisponibles.includes(1) && <option value={1}>1</option>}
+                        {funcionesDisponibles.includes(2) && <option value={2}>2</option>}
+                        {funcionesDisponibles.includes(3) && <option value={3}>3</option>}
                       </select>
                     </div>
                     <div className="flex items-center gap-2">

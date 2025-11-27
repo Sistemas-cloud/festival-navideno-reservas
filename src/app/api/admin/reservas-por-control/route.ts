@@ -1,22 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { validateAdminCredentials } from '@/lib/config/adminUsers';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-  process.env.SUPABASE_SERVICE_ROLE_KEY as string
-);
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-function isAuthorized(req: NextRequest): boolean {
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Variables de entorno de Supabase no configuradas');
+  }
+
+  return createClient(supabaseUrl, supabaseKey);
+}
+
+function isAuthorized(req: NextRequest): { authorized: boolean; user?: any } {
   const user = req.headers.get('x-admin-user');
   const pass = req.headers.get('x-admin-pass');
-  return user === 'admin' && pass === 'Admin2025.';
+  if (!user || !pass) {
+    return { authorized: false };
+  }
+  const adminUser = validateAdminCredentials(user, pass);
+  if (!adminUser) {
+    return { authorized: false };
+  }
+  return { authorized: true, user: adminUser };
 }
 
 export async function POST(req: NextRequest) {
   try {
-    if (!isAuthorized(req)) {
+    const auth = isAuthorized(req);
+    if (!auth.authorized || !auth.user) {
       return NextResponse.json({ success: false, message: 'No autorizado' }, { status: 401 });
     }
+    const supabase = getSupabaseClient();
 
     const body = await req.json();
     const control = parseInt(String(body?.control), 10);
@@ -26,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabase
       .from('reservas')
-      .select('fila, asiento, estado, referencia, zona, nivel')
+      .select('fila, asiento, estado, referencia, zona, nivel, precio')
       .eq('referencia', control)
       .in('estado', ['reservado', 'pagado']);
 
