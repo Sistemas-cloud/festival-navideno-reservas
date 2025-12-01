@@ -75,6 +75,7 @@ export default function AdminPage() {
   const [resaltados, setResaltados] = useState<{ fila: string; asiento: number; color?: 'blue' | 'orange' }[]>([]);
   const [activeTab, setActiveTab] = useState<'canje' | 'pago' | 'mapa' | 'reportes'>('canje');
   const [loadingReporte, setLoadingReporte] = useState(false);
+  const [loadingCorteCaja, setLoadingCorteCaja] = useState(false);
   const [funcionAnterior, setFuncionAnterior] = useState<number>(1);
   const [funcionReporte, setFuncionReporte] = useState<number | null>(null);
 
@@ -1254,15 +1255,252 @@ export default function AdminPage() {
                         </button>
                       </div>
 
-                      {/* Espacio para futuros reportes */}
-                      <div className="bg-gray-50 rounded-xl p-6 border-2 border-dashed border-gray-300">
-                        <div className="text-center">
-                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>
-                          <p className="text-sm text-gray-500 font-medium">Más reportes próximamente</p>
-                          <p className="text-xs text-gray-400 mt-1">Se agregarán nuevos reportes en futuras actualizaciones</p>
+                      {/* Reporte de Cortes de Caja */}
+                      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-1">Cortes de Caja por Función</h3>
+                            <p className="text-sm text-gray-600">
+                              Genera un PDF con los cortes de caja divididos por función, excluyendo usuarios internos
+                            </p>
+                          </div>
                         </div>
+
+                        <button
+                          type="button"
+                          disabled={loadingCorteCaja}
+                          onClick={async () => {
+                            setError(null);
+                            setLoadingCorteCaja(true);
+                            try {
+                              if (!currentUser) {
+                                setError('No hay usuario autenticado. Por favor, inicia sesión nuevamente.');
+                                setLoadingCorteCaja(false);
+                                return;
+                              }
+
+                              const headers = getAdminHeaders(false);
+                              
+                              if (!headers['x-admin-user'] || !headers['x-admin-pass']) {
+                                setError('Error de autenticación. Por favor, cierra sesión e inicia sesión nuevamente.');
+                                setLoadingCorteCaja(false);
+                                return;
+                              }
+
+                              const res = await fetch('/api/admin/reportes/cortes-caja', {
+                                method: 'GET',
+                                headers: headers,
+                              });
+                              
+                              if (!res.ok) {
+                                try {
+                                  const errorData = await res.json();
+                                  setError(errorData.message || 'Error al generar el corte de caja');
+                                } catch {
+                                  setError('Error al generar el corte de caja');
+                                }
+                                return;
+                              }
+
+                              const responseData = await res.json();
+                              if (!responseData.success || !responseData.data) {
+                                setError('No se pudieron obtener los datos del corte de caja');
+                                return;
+                              }
+
+                              // Generar PDF en el cliente
+                              const { default: jsPDF } = await import('jspdf');
+                              const pdf = new jsPDF('p', 'mm', 'a4');
+                              const pageWidth = pdf.internal.pageSize.getWidth();
+                              const pageHeight = pdf.internal.pageSize.getHeight();
+                              const marginTop = 30;
+                              const marginBottom = 30;
+                              const marginLeft = 20;
+                              const marginRight = 20;
+
+                              // Función para agregar nueva página
+                              const checkAndAddPage = (currentY: number, spaceNeeded: number): number => {
+                                if (currentY + spaceNeeded > pageHeight - marginBottom) {
+                                  pdf.addPage();
+                                  return marginTop;
+                                }
+                                return currentY;
+                              };
+
+                              // Encabezado
+                              let yPosition = marginTop;
+                              pdf.setFontSize(20);
+                              pdf.setTextColor(37, 99, 235);
+                              pdf.text('FESTIVAL NAVIDEÑO', pageWidth / 2, yPosition, { align: 'center' });
+                              
+                              pdf.setFontSize(16);
+                              pdf.setTextColor(0, 0, 0);
+                              yPosition += 10;
+                              pdf.text('CORTES DE CAJA POR FUNCIÓN', pageWidth / 2, yPosition, { align: 'center' });
+                              
+                              // Línea decorativa
+                              pdf.setDrawColor(37, 99, 235);
+                              pdf.setLineWidth(0.5);
+                              yPosition += 5;
+                              pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+                              
+                              yPosition += 10;
+
+                              // Fecha de generación
+                              pdf.setFontSize(10);
+                              pdf.setTextColor(100, 100, 100);
+                              const fechaGeneracion = new Date(responseData.data.fechaGeneracion).toLocaleDateString('es-MX', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              });
+                              pdf.text(`Generado el: ${fechaGeneracion}`, marginLeft, yPosition);
+                              yPosition += 10;
+
+                              // Totales generales
+                              pdf.setFontSize(12);
+                              pdf.setFont('helvetica', 'bold');
+                              pdf.setTextColor(0, 0, 0);
+                              yPosition = checkAndAddPage(yPosition, 20);
+                              pdf.text('TOTALES GENERALES', marginLeft, yPosition);
+                              yPosition += 5;
+                              pdf.setDrawColor(200, 200, 200);
+                              pdf.setLineWidth(0.3);
+                              pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+                              yPosition += 5;
+
+                              pdf.setFont('helvetica', 'normal');
+                              pdf.setFontSize(10);
+                              pdf.text(`Total de boletos vendidos: ${responseData.data.totales.totalBoletos}`, marginLeft, yPosition);
+                              yPosition += 6;
+                              pdf.text(`Total de familias: ${responseData.data.totales.totalFamilias}`, marginLeft, yPosition);
+                              yPosition += 6;
+                              pdf.setFont('helvetica', 'bold');
+                              pdf.setTextColor(34, 197, 94);
+                              pdf.text(`Total recaudado: $${responseData.data.totales.totalRecaudado.toFixed(2)}`, marginLeft, yPosition);
+                              yPosition += 10;
+
+                              // Cortes por función
+                              const cortes = responseData.data.cortes || [];
+                              
+                              for (const corte of cortes) {
+                                // Título de función
+                                yPosition = checkAndAddPage(yPosition, 30);
+                                
+                                pdf.setFontSize(14);
+                                pdf.setFont('helvetica', 'bold');
+                                pdf.setTextColor(37, 99, 235);
+                                pdf.text(corte.nombreFuncion, marginLeft, yPosition);
+                                
+                                yPosition += 8;
+                                
+                                // Resumen de la función
+                                pdf.setFontSize(11);
+                                pdf.setTextColor(0, 0, 0);
+                                pdf.setFont('helvetica', 'normal');
+                                pdf.text(`Boletos vendidos: ${corte.totalBoletos}`, marginLeft, yPosition);
+                                yPosition += 6;
+                                pdf.text(`Familias: ${corte.familias}`, marginLeft, yPosition);
+                                yPosition += 6;
+                                pdf.setFont('helvetica', 'bold');
+                                pdf.setTextColor(34, 197, 94);
+                                pdf.text(`Total: $${corte.totalRecaudado.toFixed(2)}`, marginLeft, yPosition);
+                                yPosition += 8;
+                                
+                                // Línea separadora
+                                pdf.setDrawColor(200, 200, 200);
+                                pdf.setLineWidth(0.3);
+                                pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+                                yPosition += 5;
+
+                                // Encabezados de tabla
+                                pdf.setFontSize(10);
+                                pdf.setFont('helvetica', 'bold');
+                                pdf.setTextColor(0, 0, 0);
+                                yPosition = checkAndAddPage(yPosition, 15);
+                                
+                                pdf.text('Control', marginLeft, yPosition);
+                                pdf.text('Nombre', marginLeft + 30, yPosition);
+                                pdf.text('Boletos', marginLeft + 100, yPosition);
+                                pdf.text('Total', marginLeft + 130, yPosition);
+                                yPosition += 3;
+                                
+                                // Línea bajo encabezados
+                                pdf.setDrawColor(150, 150, 150);
+                                pdf.setLineWidth(0.2);
+                                pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+                                yPosition += 5;
+
+                                // Datos de familias
+                                pdf.setFont('helvetica', 'normal');
+                                pdf.setFontSize(9);
+
+                                for (const reserva of corte.reservas) {
+                                  yPosition = checkAndAddPage(yPosition, 10);
+                                  
+                                  pdf.text(reserva.referencia.toString(), marginLeft, yPosition);
+                                  
+                                  // Nombre (truncar si es muy largo)
+                                  const nombreMaxWidth = 60;
+                                  const nombreTexto = pdf.splitTextToSize(reserva.nombre, nombreMaxWidth);
+                                  pdf.text(nombreTexto[0], marginLeft + 30, yPosition);
+                                  
+                                  pdf.text(reserva.boletos.toString(), marginLeft + 100, yPosition);
+                                  pdf.text(`$${reserva.total.toFixed(2)}`, marginLeft + 130, yPosition);
+                                  
+                                  yPosition += 8;
+                                  
+                                  // Si el nombre tiene múltiples líneas, ajustar posición
+                                  if (nombreTexto.length > 1) {
+                                    yPosition += (nombreTexto.length - 1) * 5;
+                                  }
+                                }
+                                
+                                // Espacio entre funciones
+                                yPosition += 5;
+                              }
+
+                              // Pie de página
+                              const pageCount = pdf.getNumberOfPages();
+                              for (let i = 1; i <= pageCount; i++) {
+                                pdf.setPage(i);
+                                pdf.setFontSize(8);
+                                pdf.setTextColor(100, 100, 100);
+                                pdf.text('Festival Navideño - Sistema de Reservas', pageWidth / 2, pageHeight - 15, { align: 'center' });
+                                pdf.text(`Página ${i} de ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+                              }
+
+                              // Descargar PDF
+                              const nombreArchivo = `cortes-caja-${new Date().toISOString().split('T')[0]}.pdf`;
+                              pdf.save(nombreArchivo);
+                            } catch (err) {
+                              setError('Error de red al generar el corte de caja');
+                              console.error('Error:', err);
+                            } finally {
+                              setLoadingCorteCaja(false);
+                            }
+                          }}
+                          className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold py-3 rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                        >
+                          {loadingCorteCaja ? (
+                            <>
+                              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Generando PDF...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              Generar Corte de Caja PDF
+                            </>
+                          )}
+                        </button>
                       </div>
                     </div>
 
