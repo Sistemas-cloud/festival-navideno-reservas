@@ -78,7 +78,7 @@ export default function AdminPage() {
   const [funcionAnterior, setFuncionAnterior] = useState<number>(1);
   const [funcionReporte, setFuncionReporte] = useState<number | null>(null);
 
-  const getAdminHeaders = (includeContentType: boolean = true) => {
+  const getAdminHeaders = useCallback((includeContentType: boolean = true) => {
     if (!currentUser) return {};
     const headers: Record<string, string> = {
       'x-admin-user': currentUser.username,
@@ -88,7 +88,7 @@ export default function AdminPage() {
       headers['Content-Type'] = 'application/json';
     }
     return headers;
-  };
+  }, [currentUser]);
 
   // Obtener funciones disponibles según el usuario
   const funcionesDisponibles = useMemo(() => {
@@ -117,7 +117,7 @@ export default function AdminPage() {
     } catch {
       // noop
     }
-  }, [currentUser]);
+  }, [currentUser, getAdminHeaders]);
 
   useEffect(() => { cargarOcupacion(funcionMapa); }, [funcionMapa, cargarOcupacion]);
 
@@ -442,7 +442,7 @@ export default function AdminPage() {
                           // Limpiar monto recibido después del canje
                           setMontoRecibidoCanje('');
                         }}
-                        disabled={loading || (result && result.diferencia_aplicada > 0 && (!montoRecibidoCanje || Number(montoRecibidoCanje) < result.diferencia_aplicada))}
+                        disabled={loading || !!(result && result.diferencia_aplicada > 0 && (!montoRecibidoCanje || Number(montoRecibidoCanje) < result.diferencia_aplicada))}
                         className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold py-3 rounded-lg hover:from-emerald-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                       >
                         {loading ? 'Procesando…' : 'Realizar Canje'}
