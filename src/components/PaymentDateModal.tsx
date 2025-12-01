@@ -122,9 +122,10 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
               <p className="text-sm text-gray-600">Cargando fechas disponibles...</p>
             </div>
           ) : (
-            availableDates.map((date) => {
+            availableDates.map((date, index) => {
               const disponibilidad = dateAvailability.find(d => d.fecha === date);
-              const llena = disponibilidad?.llena || false;
+              const esFecha2 = index === 1; // La segunda fecha (índice 1) siempre está disponible
+              const llena = esFecha2 ? false : (disponibilidad?.llena || false);
               const disponibles = disponibilidad?.disponibles ?? 0;
               const limite = disponibilidad?.limite ?? 0;
               const tieneInfo = disponibilidad !== undefined;
@@ -153,7 +154,11 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
                       <p className={`font-semibold ${llena ? 'text-gray-500' : 'text-gray-800'}`}>
                         {formatPaymentDate(date)}
                       </p>
-                      {tieneInfo ? (
+                      {esFecha2 ? (
+                        <p className="text-xs mt-1 text-green-600 font-semibold">
+                          ✅ Siempre disponible
+                        </p>
+                      ) : tieneInfo ? (
                         <p className={`text-xs mt-1 ${llena ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
                           {llena 
                             ? `❌ Límite alcanzado (${limite} familias)` 
