@@ -38,25 +38,9 @@ export function getPaymentDatesForLevel(level: number): string[] {
   // Para niveles: 1-2 = Kinder, 3 = Primaria (grados 2-5)
   
   // Función 1 o Niveles 1-2 (Kinder) → 1 y 2 de diciembre
-  if (level === 1) {
-    console.log('🔍 getPaymentDatesForLevel - Función 1 / Nivel 1:', ['2025-12-01', '2025-12-02']);
+  if (level === 1 || level === 2) {
+    console.log('🔍 getPaymentDatesForLevel - Función 1 / Niveles 1-2 (Kinder):', ['2025-12-01', '2025-12-02']);
     return ['2025-12-01', '2025-12-02'];
-  }
-  
-  // Función 2 o Nivel 2 (Kinder también) → 1 y 2 de diciembre
-  if (level === 2) {
-    // Puede ser función 2 (usuarios internos) o nivel 2 (Kinder)
-    // Para usuarios internos, nivel 2 = función 2 → 4-5 dic
-    // Para alumnos normales, nivel 2 = Kinder → 1-2 dic
-    // Necesitamos verificar si es usuario interno o no
-    // Por ahora, asumimos que si el nivel es exactamente 2 y no hay contexto de nivel educativo,
-    // podría ser función 2. Pero esto es ambiguo.
-    // La mejor solución es que el código que llama a esta función pase el contexto correcto.
-    // Por ahora, vamos a usar una heurística: si level === 2, asumimos función 2 (usuarios internos)
-    // porque los niveles educativos 1-2 ambos van a función 1, así que si recibimos 2 como nivel educativo
-    // debería manejarse como nivel 1.
-    console.log('🔍 getPaymentDatesForLevel - Función 2 / Nivel 2:', ['2025-12-04', '2025-12-05']);
-    return ['2025-12-04', '2025-12-05'];
   }
   
   // Función 2 o Nivel 3 (Primaria grados 2-5) → 4 y 5 de diciembre

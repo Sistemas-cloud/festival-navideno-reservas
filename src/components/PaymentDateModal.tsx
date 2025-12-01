@@ -125,10 +125,13 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
             availableDates.map((date, index) => {
               const disponibilidad = dateAvailability.find(d => d.fecha === date);
               const esFecha2 = index === 1; // La segunda fecha (índice 1) siempre está disponible
-              const llena = esFecha2 ? false : (disponibilidad?.llena || false);
+              // Para fecha2, nunca está llena. Para fecha1, usar el valor real de la API
+              const llena = esFecha2 ? false : (disponibilidad?.llena ?? false);
               const disponibles = disponibilidad?.disponibles ?? 0;
               const limite = disponibilidad?.limite ?? 0;
               const tieneInfo = disponibilidad !== undefined;
+              
+              console.log(`🔍 Modal - Fecha ${date}: esFecha2=${esFecha2}, llena=${llena}, tieneInfo=${tieneInfo}`);
               
               return (
                 <button
