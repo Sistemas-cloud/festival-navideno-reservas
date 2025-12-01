@@ -72,16 +72,21 @@ export default function AdminPage() {
   const [sectionMapa, setSectionMapa] = useState<number>(1);
   const [ocupacion, setOcupacion] = useState<OcupacionItem[]>([]);
   const [resaltados, setResaltados] = useState<{ fila: string; asiento: number; color?: 'blue' | 'orange' }[]>([]);
-  const [activeTab, setActiveTab] = useState<'canje' | 'pago' | 'mapa'>('canje');
+  const [activeTab, setActiveTab] = useState<'canje' | 'pago' | 'mapa' | 'reportes'>('canje');
+  const [loadingReporte, setLoadingReporte] = useState(false);
   const [funcionAnterior, setFuncionAnterior] = useState<number>(1);
+  const [funcionReporte, setFuncionReporte] = useState<number | null>(null);
 
-  const getAdminHeaders = () => {
+  const getAdminHeaders = (includeContentType: boolean = true) => {
     if (!currentUser) return {};
-    return {
-      'Content-Type': 'application/json',
+    const headers: Record<string, string> = {
       'x-admin-user': currentUser.username,
       'x-admin-pass': currentUser.password,
     };
+    if (includeContentType) {
+      headers['Content-Type'] = 'application/json';
+    }
+    return headers;
   };
 
   // Obtener funciones disponibles según el usuario
@@ -345,6 +350,16 @@ export default function AdminPage() {
                     }`}
                   >
                     Mapa General
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('reportes')} 
+                    className={`flex-1 px-4 py-3 rounded-lg font-medium transition-all ${
+                      activeTab === 'reportes' 
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md' 
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Reportes
                   </button>
                 </div>
               </div>
@@ -954,6 +969,307 @@ export default function AdminPage() {
                       return z.includes('bronce');
                     })}
                   />
+                </div>
+              )}
+
+              {activeTab === 'reportes' && (
+                <div className="space-y-6">
+                  <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-indigo-200/50">
+                    <div className="mb-6">
+                      <h2 className="text-xl font-bold text-gray-900 mb-2">Reportes</h2>
+                      <p className="text-sm text-gray-500">Genera reportes en formato PDF</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Reporte de Alumnos y Fechas de Pago */}
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-200">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-1">Reporte de Alumnos y Fechas de Pago</h3>
+                            <p className="text-sm text-gray-600">
+                              Genera un PDF con el número de control, nombre y fecha de pago de todos los alumnos con reservas
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Selector de función */}
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Filtrar por función:
+                          </label>
+                          <select
+                            value={funcionReporte === null ? '' : funcionReporte}
+                            onChange={(e) => setFuncionReporte(e.target.value === '' ? null : parseInt(e.target.value, 10))}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                            disabled={loadingReporte}
+                          >
+                            <option value="">Todas las funciones</option>
+                            {funcionesDisponibles.map((func) => (
+                              <option key={func} value={func}>
+                                Función {func} {func === 1 ? '(Kinder)' : func === 2 ? '(Primaria)' : '(Secundaria)'}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={loadingReporte}
+                          onClick={async () => {
+                            setError(null);
+                            setLoadingReporte(true);
+                            try {
+                              if (!currentUser) {
+                                setError('No hay usuario autenticado. Por favor, inicia sesión nuevamente.');
+                                setLoadingReporte(false);
+                                return;
+                              }
+
+                              const headers = getAdminHeaders(false);
+                              
+                              // Validar que los headers estén presentes
+                              if (!headers['x-admin-user'] || !headers['x-admin-pass']) {
+                                setError('Error de autenticación. Por favor, cierra sesión e inicia sesión nuevamente.');
+                                setLoadingReporte(false);
+                                return;
+                              }
+
+                              console.log('🔍 Enviando petición con headers:', {
+                                user: headers['x-admin-user'],
+                                hasPass: !!headers['x-admin-pass']
+                              });
+
+                              // Construir URL con parámetro de función si está seleccionado
+                              let url = '/api/admin/reportes/alumnos-pagos';
+                              if (funcionReporte !== null) {
+                                url += `?funcion=${funcionReporte}`;
+                              }
+
+                              const res = await fetch(url, {
+                                method: 'GET',
+                                headers: headers,
+                              });
+                              
+                              if (!res.ok) {
+                                // Intentar leer como JSON si hay error
+                                try {
+                                  const errorData = await res.json();
+                                  setError(errorData.message || 'Error al generar el reporte');
+                                } catch {
+                                  setError('Error al generar el reporte');
+                                }
+                                return;
+                              }
+
+                              const responseData = await res.json();
+                              if (!responseData.success || !responseData.data) {
+                                setError('No se pudieron obtener los datos del reporte');
+                                return;
+                              }
+
+                              // Generar PDF en el cliente
+                              const { default: jsPDF } = await import('jspdf');
+                              const pdf = new jsPDF('p', 'mm', 'a4');
+                              const pageWidth = pdf.internal.pageSize.getWidth();
+                              const pageHeight = pdf.internal.pageSize.getHeight();
+                              const marginTop = 30;
+                              const marginBottom = 30;
+                              const marginLeft = 20;
+                              const marginRight = 20;
+
+                              // Función para agregar nueva página
+                              const checkAndAddPage = (currentY: number, spaceNeeded: number): number => {
+                                if (currentY + spaceNeeded > pageHeight - marginBottom) {
+                                  pdf.addPage();
+                                  return marginTop;
+                                }
+                                return currentY;
+                              };
+
+                              // Encabezado
+                              let yPosition = marginTop;
+                              pdf.setFontSize(20);
+                              pdf.setTextColor(37, 99, 235);
+                              pdf.text('FESTIVAL NAVIDEÑO', pageWidth / 2, yPosition, { align: 'center' });
+                              
+                              pdf.setFontSize(16);
+                              pdf.setTextColor(0, 0, 0);
+                              yPosition += 10;
+                              pdf.text('REPORTE DE ALUMNOS Y FECHAS DE PAGO', pageWidth / 2, yPosition, { align: 'center' });
+                              
+                              // Línea decorativa
+                              pdf.setDrawColor(37, 99, 235);
+                              pdf.setLineWidth(0.5);
+                              yPosition += 5;
+                              pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+                              
+                              yPosition += 10;
+
+                              // Información de función si está filtrada
+                              if (responseData.data.funcion) {
+                                pdf.setFontSize(12);
+                                pdf.setTextColor(37, 99, 235);
+                                pdf.setFont('helvetica', 'bold');
+                                const nombreFuncion = responseData.data.funcion === 1 ? 'Kinder' : 
+                                                     responseData.data.funcion === 2 ? 'Primaria' : 'Secundaria';
+                                pdf.text(`Función ${responseData.data.funcion} - ${nombreFuncion}`, pageWidth / 2, yPosition, { align: 'center' });
+                                yPosition += 8;
+                              }
+
+                              // Fecha de generación
+                              pdf.setFontSize(10);
+                              pdf.setTextColor(100, 100, 100);
+                              const fechaGeneracion = new Date(responseData.data.fechaGeneracion).toLocaleDateString('es-MX', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              });
+                              pdf.text(`Generado el: ${fechaGeneracion}`, marginLeft, yPosition);
+                              pdf.text(`Total de alumnos: ${responseData.data.totalAlumnos}`, pageWidth - marginRight - 60, yPosition, { align: 'right' });
+                              yPosition += 10;
+
+                              // Datos agrupados por fecha de pago
+                              const alumnosAgrupados = responseData.data.alumnosAgrupados || [];
+                              
+                              for (const grupo of alumnosAgrupados) {
+                                // Título del grupo (fecha de pago)
+                                yPosition = checkAndAddPage(yPosition, 20);
+                                
+                                pdf.setFontSize(14);
+                                pdf.setFont('helvetica', 'bold');
+                                pdf.setTextColor(37, 99, 235);
+                                
+                                let tituloGrupo = 'Sin fecha de pago asignada';
+                                if (grupo.fechaPago) {
+                                  // Parsear la fecha manualmente para evitar problemas de zona horaria
+                                  // fechaPago viene en formato YYYY-MM-DD
+                                  const [year, month, day] = grupo.fechaPago.split('-').map(Number);
+                                  const fecha = new Date(year, month - 1, day); // month es 0-indexed
+                                  tituloGrupo = fecha.toLocaleDateString('es-MX', {
+                                    weekday: 'long',
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  });
+                                  // Capitalizar primera letra
+                                  tituloGrupo = tituloGrupo.charAt(0).toUpperCase() + tituloGrupo.slice(1);
+                                }
+                                
+                                pdf.text(tituloGrupo, marginLeft, yPosition);
+                                pdf.text(`(${grupo.alumnos.length} alumno${grupo.alumnos.length !== 1 ? 's' : ''})`, pageWidth - marginRight - 5, yPosition, { align: 'right' });
+                                
+                                yPosition += 8;
+                                
+                                // Línea separadora
+                                pdf.setDrawColor(200, 200, 200);
+                                pdf.setLineWidth(0.3);
+                                pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+                                yPosition += 5;
+
+                                // Encabezado de tabla para este grupo
+                                pdf.setFontSize(11);
+                                pdf.setTextColor(0, 0, 0);
+                                pdf.setFont('helvetica', 'bold');
+                                yPosition = checkAndAddPage(yPosition, 15);
+                                
+                                pdf.text('Control', marginLeft + 5, yPosition);
+                                pdf.text('Nombre del Alumno', marginLeft + 30, yPosition);
+                                yPosition += 3;
+                                
+                                // Línea bajo encabezados
+                                pdf.setDrawColor(150, 150, 150);
+                                pdf.setLineWidth(0.2);
+                                pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+                                yPosition += 5;
+
+                                // Datos de alumnos en este grupo (ya ordenados por nombre)
+                                pdf.setFont('helvetica', 'normal');
+                                pdf.setFontSize(10);
+
+                                for (const alumno of grupo.alumnos) {
+                                  yPosition = checkAndAddPage(yPosition, 10);
+                                  
+                                  // Control
+                                  pdf.text(alumno.control.toString(), marginLeft + 5, yPosition);
+                                  
+                                  // Nombre (truncar si es muy largo)
+                                  const nombreMaxWidth = 100;
+                                  const nombreTexto = pdf.splitTextToSize(alumno.nombre, nombreMaxWidth);
+                                  pdf.text(nombreTexto[0], marginLeft + 30, yPosition);
+                                  
+                                  yPosition += 8;
+                                  
+                                  // Si el nombre tiene múltiples líneas, ajustar posición
+                                  if (nombreTexto.length > 1) {
+                                    yPosition += (nombreTexto.length - 1) * 5;
+                                  }
+                                }
+                                
+                                // Espacio entre grupos
+                                yPosition += 5;
+                              }
+
+                              // Pie de página
+                              const pageCount = pdf.getNumberOfPages();
+                              for (let i = 1; i <= pageCount; i++) {
+                                pdf.setPage(i);
+                                pdf.setFontSize(8);
+                                pdf.setTextColor(100, 100, 100);
+                                pdf.text('Festival Navideño - Sistema de Reservas', pageWidth / 2, pageHeight - 15, { align: 'center' });
+                                pdf.text(`Página ${i} de ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+                              }
+
+                              // Descargar PDF
+                              const nombreArchivo = `reporte-alumnos-pagos-${new Date().toISOString().split('T')[0]}.pdf`;
+                              pdf.save(nombreArchivo);
+                            } catch (err) {
+                              setError('Error de red al generar el reporte');
+                              console.error('Error:', err);
+                            } finally {
+                              setLoadingReporte(false);
+                            }
+                          }}
+                          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold py-3 rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                        >
+                          {loadingReporte ? (
+                            <>
+                              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Generando PDF...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              Generar Reporte PDF
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Espacio para futuros reportes */}
+                      <div className="bg-gray-50 rounded-xl p-6 border-2 border-dashed border-gray-300">
+                        <div className="text-center">
+                          <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                          </svg>
+                          <p className="text-sm text-gray-500 font-medium">Más reportes próximamente</p>
+                          <p className="text-xs text-gray-400 mt-1">Se agregarán nuevos reportes en futuras actualizaciones</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {error && (
+                      <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                        {error}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
