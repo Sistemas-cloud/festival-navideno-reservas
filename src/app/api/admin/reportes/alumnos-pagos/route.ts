@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateAdminCredentials, canAccessFunction } from '@/lib/config/adminUsers';
+import { validateAdminCredentials, canAccessFunction, type AdminUser } from '@/lib/config/adminUsers';
 import { createClient } from '@supabase/supabase-js';
 
 function getSupabaseClient() {
@@ -13,7 +13,7 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseKey);
 }
 
-function isAuthorized(req: NextRequest): { authorized: boolean; user?: any } {
+function isAuthorized(req: NextRequest): { authorized: boolean; user?: AdminUser } {
   const user = req.headers.get('x-admin-user');
   const pass = req.headers.get('x-admin-pass');
   
@@ -153,7 +153,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Ordenar por nombre dentro de cada grupo de fecha
-    for (const [fecha, alumnos] of alumnosPorFecha.entries()) {
+    for (const [, alumnos] of alumnosPorFecha.entries()) {
       alumnos.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     }
 

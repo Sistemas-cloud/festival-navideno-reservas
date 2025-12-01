@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { validateAdminCredentials } from '@/lib/config/adminUsers';
+import { validateAdminCredentials, type AdminUser } from '@/lib/config/adminUsers';
 
 function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,7 +13,7 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseKey);
 }
 
-function isAuthorized(req: NextRequest): { authorized: boolean; user?: any } {
+function isAuthorized(req: NextRequest): { authorized: boolean; user?: AdminUser } {
   const user = req.headers.get('x-admin-user');
   const pass = req.headers.get('x-admin-pass');
   if (!user || !pass) {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AdminSeatMap } from '@/components/admin/AdminSeatMap';
 import { validateAdminCredentials, canAccessFunction, type AdminUser } from '@/lib/config/adminUsers';
 
@@ -45,6 +45,7 @@ interface ReservaPorControl {
   referencia: number;
   zona: string;
   nivel: number;
+  precio?: number;
 }
 
 export default function AdminPage() {
@@ -98,14 +99,15 @@ export default function AdminPage() {
     return [currentUser.funcion];
   }, [currentUser]);
 
-  const cargarOcupacion = async (funcion: number) => {
+  const cargarOcupacion = useCallback(async (funcion: number) => {
     if (!currentUser || !canAccessFunction(currentUser, funcion)) {
       return;
     }
     try {
+      const headers = getAdminHeaders();
       const res = await fetch('/api/admin/ocupacion', {
         method: 'POST',
-        headers: getAdminHeaders(),
+        headers: headers,
         body: JSON.stringify({ funcion })
       });
       const data = await res.json();
@@ -115,9 +117,9 @@ export default function AdminPage() {
     } catch {
       // noop
     }
-  };
+  }, [currentUser]);
 
-  useEffect(() => { cargarOcupacion(funcionMapa); }, [funcionMapa]);
+  useEffect(() => { cargarOcupacion(funcionMapa); }, [funcionMapa, cargarOcupacion]);
 
   // Limpiar resaltados cuando cambia la función
   useEffect(() => {
@@ -632,8 +634,8 @@ export default function AdminPage() {
                               const dataConsulta = await resConsulta.json();
                               if (resConsulta.ok && dataConsulta.success) {
                                 // Calcular total sumando los precios de las reservas pendientes
-                                const reservasPendientes = (dataConsulta.data || []).filter((r: any) => r.estado === 'reservado');
-                                const total = reservasPendientes.reduce((sum: number, r: any) => sum + (Number(r.precio) || 0), 0);
+                                const reservasPendientes = (dataConsulta.data || []).filter((r: ReservaPorControl) => r.estado === 'reservado');
+                                const total = reservasPendientes.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
                                 setTotalAPagarPago(total);
                               } else {
                                 setError('No se encontraron reservas pendientes para este control');
