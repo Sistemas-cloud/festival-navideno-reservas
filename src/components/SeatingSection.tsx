@@ -19,8 +19,8 @@ const sectionConfigs: { [key: number]: SectionConfig } = {
     color: 'oro',
     price: 200.00,
     rows: { 
-      A: 10,  // Fila más cercana al escenario (arriba)
-      B: 19,  // Segunda fila
+      A: 19,  // Fila más cercana al escenario (arriba)
+      B: 25,  // Segunda fila
       C: 27,  // Tercera fila
       D: 31,  // Cuarta fila
       E: 33,  // Quinta fila

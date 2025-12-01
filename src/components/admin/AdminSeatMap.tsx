@@ -24,7 +24,7 @@ const sectionConfigs: Record<number, {
   disabledSeats?: Array<{ row: string; seat: number }>;
   specialLayout?: boolean;
 }> = {
-  1: { name: 'ORO', color: 'oro', rows: { A: 10, B: 19, C: 27, D: 31, E: 33, F: 35, G: 39, H: 41, I: 43 } },
+  1: { name: 'ORO', color: 'oro', rows: { A: 19, B: 25, C: 27, D: 31, E: 33, F: 35, G: 39, H: 41, I: 43 } },
   2: { name: 'PLATA', color: 'plata', rows: { J: 31, K: 37, L: 37, M: 37, N: 37, O: 37, P: 37, Q: 45, R: 45, S: 45, T: 45, U: 45, V: 39, W: 42 }, accessibleSeats: [ { row: 'J', seat: 1 }, { row: 'J', seat: 2 }, { row: 'J', seat: 3 }, { row: 'J', seat: 4 }, { row: 'J', seat: 5 }, { row: 'J', seat: 27 }, { row: 'J', seat: 28 }, { row: 'J', seat: 29 }, { row: 'J', seat: 30 }, { row: 'J', seat: 31 } ] },
   3: { name: 'BRONCE (PALCOS)', color: 'bronce', rows: { II: 5, HH: 12, JJ: 12, KK: 5 }, specialLayout: true },
   4: { 
