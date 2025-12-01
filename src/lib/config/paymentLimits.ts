@@ -1,6 +1,8 @@
 /**
  * Configuración de límites de familias por fecha de pago
- * Distribución equitativa entre los dos días disponibles por función
+ * 
+ * IMPORTANTE: Solo la fecha1 (primer día) tiene límite de cupo.
+ * La fecha2 (segundo día) siempre está disponible sin límite.
  */
 
 export interface PaymentDateLimit {
@@ -8,8 +10,8 @@ export interface PaymentDateLimit {
   totalFamilias: number;
   fecha1: string;
   fecha2: string;
-  limiteFecha1: number;
-  limiteFecha2: number;
+  limiteFecha1: number; // Límite de familias para el primer día
+  limiteFecha2: number; // Valor informativo - NO SE USA COMO LÍMITE (fecha2 siempre disponible)
 }
 
 export const PAYMENT_LIMITS: PaymentDateLimit[] = [

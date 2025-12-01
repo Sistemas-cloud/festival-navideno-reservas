@@ -291,19 +291,20 @@ export class ReservaModel {
       }
 
       // VALIDACIÓN DE LÍMITE DE FAMILIAS POR FECHA DE PAGO
-      // Verificar si la fecha de pago seleccionada está llena
+      // IMPORTANTE: Solo la fecha1 (primer día) tiene límite. La fecha2 (segundo día) siempre está disponible.
       if (!isInternal) { // Los usuarios internos no tienen restricción de límite
         const { getPaymentLimitsForFunction } = await import('../config/paymentLimits');
         const limits = getPaymentLimitsForFunction(nivel);
         
         if (limits) {
-          // Verificar si la fecha está llena
-          const familiasEnFecha = await this.contarFamiliasPorFechaPago(nivel, fechaFormateada);
-          const limiteFecha = fechaFormateada === limits.fecha1 ? limits.limiteFecha1 : 
-                             fechaFormateada === limits.fecha2 ? limits.limiteFecha2 : null;
+          // Solo validar límite para fecha1 (primer día)
+          // La fecha2 (segundo día) SIEMPRE está disponible
+          const limiteFecha = fechaFormateada === limits.fecha1 ? limits.limiteFecha1 : null;
           
           if (limiteFecha !== null) {
-            console.log(`🔍 crearReserva - Verificando límite: ${familiasEnFecha} familias en fecha ${fechaFormateada}, límite: ${limiteFecha}`);
+            // Solo validamos fecha1
+            const familiasEnFecha = await this.contarFamiliasPorFechaPago(nivel, fechaFormateada);
+            console.log(`🔍 crearReserva - Verificando límite fecha1: ${familiasEnFecha} familias en fecha ${fechaFormateada}, límite: ${limiteFecha}`);
             
             // Verificar si la familia ya tiene reservas con esta fecha
             // Si ya tiene reservas con esta fecha, no cuenta como nueva familia
@@ -333,10 +334,13 @@ export class ReservaModel {
                 const nombreFuncion = this.getNombreFuncion(nivel);
                 return {
                   success: false,
-                  message: `Lo sentimos, la fecha de pago ${formatPaymentDate(fechaFormateada)} para la ${nombreFuncion} ya ha alcanzado su límite máximo de ${limiteFecha} familias. Por favor, selecciona la otra fecha disponible.`
+                  message: `Lo sentimos, la fecha de pago ${formatPaymentDate(fechaFormateada)} para la ${nombreFuncion} ya ha alcanzado su límite máximo de ${limiteFecha} familias. Por favor, selecciona la otra fecha disponible (segundo día).`
                 };
               }
             }
+          } else if (fechaFormateada === limits.fecha2) {
+            // Fecha2 - sin validación de límite
+            console.log(`✅ crearReserva - Fecha2 (${fechaFormateada}): SIEMPRE DISPONIBLE - sin límite de cupo`);
           }
         }
       }
@@ -798,6 +802,8 @@ export class ReservaModel {
 
   /**
    * Obtiene la disponibilidad de fechas de pago para una función
+   * IMPORTANTE: Solo la fecha1 (primer día) tiene límite de cupo
+   * La fecha2 (segundo día) siempre está disponible sin límite
    */
   async getPaymentDateAvailability(funcion: number): Promise<Array<{fecha: string, disponibles: number, limite: number, llena: boolean}>> {
     try {
@@ -811,7 +817,7 @@ export class ReservaModel {
 
       const disponibilidad = [];
 
-      // Contar familias para fecha 1
+      // Fecha 1: Contar familias y aplicar límite
       const familiasFecha1 = await this.contarFamiliasPorFechaPago(funcion, limits.fecha1);
       const disponiblesFecha1 = Math.max(0, limits.limiteFecha1 - familiasFecha1);
       const llenaFecha1 = familiasFecha1 >= limits.limiteFecha1;
@@ -823,17 +829,19 @@ export class ReservaModel {
         llena: llenaFecha1
       });
 
-      // Contar familias para fecha 2
+      // Fecha 2: SIEMPRE DISPONIBLE - No tiene límite de cupo
+      // Contar solo para información, pero nunca marcar como llena
       const familiasFecha2 = await this.contarFamiliasPorFechaPago(funcion, limits.fecha2);
-      const disponiblesFecha2 = Math.max(0, limits.limiteFecha2 - familiasFecha2);
-      const llenaFecha2 = familiasFecha2 >= limits.limiteFecha2;
 
       disponibilidad.push({
         fecha: limits.fecha2,
-        disponibles: disponiblesFecha2,
-        limite: limits.limiteFecha2,
-        llena: llenaFecha2
+        disponibles: 9999, // Número alto para indicar "sin límite"
+        limite: 0, // 0 indica sin límite
+        llena: false // SIEMPRE false - segunda fecha nunca se llena
       });
+
+      console.log(`📅 Disponibilidad fecha 1 (${limits.fecha1}): ${disponiblesFecha1} de ${limits.limiteFecha1} - ${llenaFecha1 ? 'LLENA' : 'DISPONIBLE'}`);
+      console.log(`📅 Disponibilidad fecha 2 (${limits.fecha2}): SIEMPRE DISPONIBLE (${familiasFecha2} familias registradas)`);
 
       return disponibilidad;
 
