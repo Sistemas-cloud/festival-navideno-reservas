@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateAdminCredentials, canAccessFunction, type AdminUser } from '@/lib/config/adminUsers';
+import { validateAdminCredentials, type AdminUser } from '@/lib/config/adminUsers';
 import { createClient } from '@supabase/supabase-js';
 
 function getSupabaseClient() {
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ 
         success: false, 
         message: 'Error obteniendo reservas', 
-        detail: reservasError.message 
+        detail: reservasError instanceof Error ? reservasError.message : String(reservasError) 
       }, { status: 500 });
     }
 
@@ -59,14 +59,6 @@ export async function GET(req: NextRequest) {
     const reservas = (reservasTodas || []).filter(r => 
       r.referencia !== 9001 && r.referencia !== 9002 && r.referencia !== 9003
     );
-
-    if (reservasError) {
-      return NextResponse.json({ 
-        success: false, 
-        message: 'Error obteniendo reservas', 
-        detail: reservasError.message 
-      }, { status: 500 });
-    }
 
     if (!reservas || reservas.length === 0) {
       return NextResponse.json({ 
