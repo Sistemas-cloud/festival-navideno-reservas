@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { formatPaymentDate, getPaymentDatesForLevel } from '@/lib/utils/paymentDates';
+import { formatPaymentDate } from '@/lib/utils/paymentDates';
 
 interface PaymentDateModalProps {
   isOpen: boolean;
@@ -17,6 +17,37 @@ interface DateAvailability {
   disponibles: number;
   limite: number;
   llena: boolean;
+}
+
+// Función auxiliar para obtener la fecha actual en Monterrey (cliente)
+function getTodayInMonterrey(): Date {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Monterrey',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const todayStr = formatter.format(now); // Formato: YYYY-MM-DD
+  const [year, month, day] = todayStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+// Función auxiliar para parsear fecha string a Date
+function parseDateString(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+// Función auxiliar para verificar si una fecha ya pasó
+function isDatePassed(dateStr: string): boolean {
+  const today = getTodayInMonterrey();
+  const targetDate = parseDateString(dateStr);
+  return today.getTime() > targetDate.getTime();
 }
 
 export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
@@ -36,7 +67,7 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
   useEffect(() => {
     if (isOpen && alumnoRef) {
       setLoadingAvailability(true);
-      setSelectedDate(''); // Limpiar selección previa
+      setSelectedDate(''); // Limpiar selección previa - NO seleccionar automáticamente
       setDateAvailability([]); // Limpiar disponibilidad previa
       
       fetch('/api/reservas/disponibilidad-fechas', {
@@ -49,32 +80,19 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
         .then(res => res.json())
         .then(data => {
           if (data.success && data.disponibilidad) {
+            // Usar solo las fechas que vienen de la API (ya están filtradas por función correcta)
             setDateAvailability(data.disponibilidad);
-            
-            // Seleccionar automáticamente la primera fecha disponible (no llena)
-            const fechaDisponible = data.disponibilidad.find((d: DateAvailability) => !d.llena);
-            if (fechaDisponible) {
-              setSelectedDate(fechaDisponible.fecha);
-            } else {
-              // Si ambas están llenas, usar la primera como fallback (aunque esté llena)
-              if (data.disponibilidad.length > 0) {
-                setSelectedDate(data.disponibilidad[0].fecha);
-              }
-            }
+            // NO seleccionar automáticamente - el usuario debe elegir
           } else {
-            // Fallback: usar fechas sin disponibilidad
-            const availableDates = getPaymentDatesForLevel(nivel);
-            if (availableDates.length > 0) {
-              setSelectedDate(availableDates[0]);
-            }
+            console.error('Error al obtener disponibilidad de fechas:', data.message);
+            // Si hay error, no establecer fechas - el modal mostrará mensaje de error
+            setDateAvailability([]);
           }
         })
         .catch(error => {
-          // Fallback: usar fechas sin disponibilidad
-          const availableDates = getPaymentDatesForLevel(nivel);
-          if (availableDates.length > 0) {
-            setSelectedDate(availableDates[0]);
-          }
+          console.error('Error al obtener disponibilidad de fechas:', error);
+          // Si hay error, no establecer fechas - el modal mostrará mensaje de error
+          setDateAvailability([]);
         })
         .finally(() => {
           setLoadingAvailability(false);
@@ -84,11 +102,9 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
       setDateAvailability([]);
       setSelectedDate('');
     }
-  }, [isOpen, alumnoRef, nivel]);
+  }, [isOpen, alumnoRef]);
 
   if (!isOpen) return null;
-
-  const availableDates = getPaymentDatesForLevel(nivel);
 
   const handleConfirm = () => {
     if (selectedDate) {
@@ -119,62 +135,72 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
             </div>
           ) : dateAvailability.length === 0 ? (
             <div className="text-center py-4">
-              <p className="text-sm text-gray-600">Cargando fechas disponibles...</p>
+              <p className="text-sm text-red-600 font-semibold">Error al cargar fechas disponibles</p>
+              <p className="text-xs text-gray-500 mt-1">Por favor, intenta cerrar y abrir el modal nuevamente</p>
             </div>
           ) : (
-            availableDates.map((date, index) => {
-              const disponibilidad = dateAvailability.find(d => d.fecha === date);
-              const esFecha2 = index === 1; // La segunda fecha (índice 1) siempre está disponible
-              // Para fecha2, nunca está llena. Para fecha1, usar el valor real de la API
-              const llena = esFecha2 ? false : (disponibilidad?.llena ?? false);
-              const disponibles = disponibilidad?.disponibles ?? 0;
-              const limite = disponibilidad?.limite ?? 0;
-              const tieneInfo = disponibilidad !== undefined;
+            dateAvailability.map((disponibilidad) => {
+              const fecha = disponibilidad.fecha;
+              // La segunda fecha (fecha2) siempre está disponible - se identifica porque limite === 0
+              // La fecha1 siempre tiene un límite > 0
+              const esFecha2 = disponibilidad.limite === 0;
               
-              console.log(`🔍 Modal - Fecha ${date}: esFecha2=${esFecha2}, llena=${llena}, tieneInfo=${tieneInfo}`);
+              // Verificar si la fecha ya pasó (solo para fecha1, fecha2 siempre disponible)
+              const fechaYaPaso = !esFecha2 && isDatePassed(fecha);
+              
+              const llena = disponibilidad.llena ?? false;
+              const disponibles = disponibilidad.disponibles ?? 0;
+              const limite = disponibilidad.limite ?? 0;
+              const deshabilitada = llena || fechaYaPaso;
+              
+              console.log(`🔍 Modal - Fecha ${fecha}: esFecha2=${esFecha2}, llena=${llena}, fechaYaPaso=${fechaYaPaso}, deshabilitada=${deshabilitada}`);
               
               return (
                 <button
-                  key={date}
+                  key={fecha}
                   onClick={() => {
-                    if (!llena) {
-                      setSelectedDate(date);
+                    if (!deshabilitada) {
+                      setSelectedDate(fecha);
+                    } else if (fechaYaPaso) {
+                      alert(`La fecha ${formatPaymentDate(fecha)} ya pasó. Por favor, selecciona la otra fecha disponible.`);
                     } else {
-                      alert(`La fecha ${formatPaymentDate(date)} ya ha alcanzado su límite máximo de ${limite} familias. Por favor, selecciona la otra fecha disponible.`);
+                      alert(`La fecha ${formatPaymentDate(fecha)} ya ha alcanzado su límite máximo de ${limite} familias. Por favor, selecciona la otra fecha disponible.`);
                     }
                   }}
-                  disabled={llena}
+                  disabled={deshabilitada}
                   className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
-                    llena
+                    deshabilitada
                       ? 'border-red-300 bg-red-50 cursor-not-allowed opacity-60'
-                      : selectedDate === date
+                      : selectedDate === fecha
                       ? 'border-blue-500 bg-blue-50 shadow-lg'
                       : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="text-left flex-1">
-                      <p className={`font-semibold ${llena ? 'text-gray-500' : 'text-gray-800'}`}>
-                        {formatPaymentDate(date)}
+                      <p className={`font-semibold ${deshabilitada ? 'text-gray-500' : 'text-gray-800'}`}>
+                        {formatPaymentDate(fecha)}
                       </p>
                       {esFecha2 ? (
                         <p className="text-xs mt-1 text-green-600 font-semibold">
                           ✅ Siempre disponible
                         </p>
-                      ) : tieneInfo ? (
+                      ) : fechaYaPaso ? (
+                        <p className="text-xs mt-1 text-red-600 font-semibold">
+                          ❌ Fecha ya pasó
+                        </p>
+                      ) : (
                         <p className={`text-xs mt-1 ${llena ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
                           {llena 
                             ? `❌ Límite alcanzado (${limite} familias)` 
                             : `✅ ${disponibles} de ${limite} lugares disponibles`}
                         </p>
-                      ) : (
-                        <p className="text-xs mt-1 text-gray-400">Verificando disponibilidad...</p>
                       )}
                     </div>
-                    {selectedDate === date && !llena && (
+                    {selectedDate === fecha && !deshabilitada && (
                       <span className="text-blue-500 text-2xl">✓</span>
                     )}
-                    {llena && (
+                    {deshabilitada && (
                       <span className="text-red-500 text-2xl">✗</span>
                     )}
                   </div>

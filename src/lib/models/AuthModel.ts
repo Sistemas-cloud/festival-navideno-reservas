@@ -1,7 +1,7 @@
 import { getSupabaseClient } from '../supabase';
 import { validateInternalUser } from '../config/internalUsers';
 import { hasEarlyAccess, getOpeningDateForFunction } from '../config/earlyAccess';
-import { getTodayInMonterrey, parseDateString } from '../utils/timezone';
+import { getTodayInMonterrey, parseDateString, isAfterClosingTime } from '../utils/timezone';
 
 interface HermanoData {
   nombre: string;
@@ -191,42 +191,45 @@ export class AuthModel {
       // Validaciones de fechas (usando hora de Monterrey)
       const today = getTodayInMonterrey();
       
-      // Fechas de cierre por función (iniciando el segundo día de venta)
-      // Función 1: Maternal + Kinder + 1° primaria → vende 1-2 dic, cierra iniciando el 2 dic
-      // Función 2: 2°-5° primaria → vende 4-5 dic, cierra iniciando el 5 dic
-      // Función 3: 6° primaria + Secundaria → vende 8-9 dic, cierra iniciando el 9 dic
-      const fechaCierreFuncion1 = parseDateString("2025-12-02");
-      const fechaCierreFuncion2 = parseDateString("2025-12-05");
-      const fechaCierreFuncion3 = parseDateString("2025-12-09");
+      // Fechas de cierre por función - cierra a las 13:00 (1 PM) del día indicado
+      // Función 1: Maternal + Kinder + 1° primaria → vende 1-2 dic, cierra a las 13:00 del 2 dic
+      // Función 2: 2°-5° primaria → vende 4-5 dic, cierra a las 13:00 del 5 dic
+      // Función 3: 6° primaria + Secundaria → vende 8-9 dic, cierra a las 13:00 del 9 dic
+      const fechaCierreFuncion1 = "2025-12-02";
+      const fechaCierreFuncion2 = "2025-12-05";
+      const fechaCierreFuncion3 = "2025-12-09";
       
       // Determinar fecha de cierre según la función del alumno
-      let fechaCierre = fechaCierreFuncion3; // Por defecto
+      let fechaCierreStr = fechaCierreFuncion3; // Por defecto
       let nombreFuncion = '';
       
       if (nivel === 1 || nivel === 2) {
         // Maternal o Kinder → Función 1
-        fechaCierre = fechaCierreFuncion1;
+        fechaCierreStr = fechaCierreFuncion1;
         nombreFuncion = '1ra Función';
       } else if (nivel === 3) {
         // Primaria
         if (grado === 1) {
-          fechaCierre = fechaCierreFuncion1;
+          fechaCierreStr = fechaCierreFuncion1;
           nombreFuncion = '1ra Función';
         } else if (grado >= 2 && grado <= 5) {
-          fechaCierre = fechaCierreFuncion2;
+          fechaCierreStr = fechaCierreFuncion2;
           nombreFuncion = '2da Función';
         } else if (grado === 6) {
-          fechaCierre = fechaCierreFuncion3;
+          fechaCierreStr = fechaCierreFuncion3;
           nombreFuncion = '3ra Función';
         } else {
-          fechaCierre = fechaCierreFuncion1;
+          fechaCierreStr = fechaCierreFuncion1;
           nombreFuncion = '1ra Función';
         }
       } else if (nivel === 4) {
         // Secundaria → Función 3
-        fechaCierre = fechaCierreFuncion3;
+        fechaCierreStr = fechaCierreFuncion3;
         nombreFuncion = '3ra Función';
       }
+      
+      // Obtener la fecha de cierre como Date para los logs
+      const fechaCierre = parseDateString(fechaCierreStr);
       
       // Calcular función numérica para validación de acceso anticipado
       let funcionNum = 3; // Por defecto
@@ -293,12 +296,12 @@ export class AuthModel {
         }
       }
       
-      if (today >= fechaCierre) {
-        console.log(`✅ Sistema de reservas: CERRADO para ${nombreFuncion} (nivel ${nivel}, grado ${grado}) - iniciando el ${fechaCierre.toLocaleDateString('es-MX')}`);
+      if (isAfterClosingTime(fechaCierreStr)) {
+        console.log(`✅ Sistema de reservas: CERRADO para ${nombreFuncion} (nivel ${nivel}, grado ${grado}) - cerró a las 13:00 del ${fechaCierre.toLocaleDateString('es-MX')}`);
         console.log(`ℹ️  Los usuarios pueden eliminar asientos pero no pueden reservar nuevos.`);
       } else {
         console.log(`⏰ Sistema de reservas: ABIERTO para ${nombreFuncion} (nivel ${nivel}, grado ${grado})`);
-        console.log(`📅 Fecha de cierre: ${fechaCierre.toLocaleDateString('es-MX')} (cerrará iniciando ese día)`);
+        console.log(`📅 Fecha de cierre: ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM`);
       }
       
       console.log('=====================================\n');

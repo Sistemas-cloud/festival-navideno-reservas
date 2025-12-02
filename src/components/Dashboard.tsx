@@ -217,7 +217,7 @@ export const Dashboard: React.FC = () => {
   };
 
   // Validar fechas cuando se selecciona una sección
-  // El sistema se cierra INICIANDO el segundo día de venta para cada nivel
+  // El sistema se cierra a las 13:00 (1 PM) del último día de venta para cada nivel
   // Los usuarios pueden eliminar asientos pero no pueden reservar nuevos después del cierre
   // Los usuarios internos nunca están bloqueados por fechas
   // Usa hora de Monterrey para todas las comparaciones
@@ -227,33 +227,69 @@ export const Dashboard: React.FC = () => {
       return true;
     }
     
-    const today = getTodayInMonterrey();
+    // Obtener la fecha y hora actual en Monterrey
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Monterrey',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    
+    const parts = formatter.formatToParts(now);
+    const currentYear = parseInt(parts.find(p => p.type === 'year')?.value || '0');
+    const currentMonth = parseInt(parts.find(p => p.type === 'month')?.value || '0');
+    const currentDay = parseInt(parts.find(p => p.type === 'day')?.value || '0');
+    const currentHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
 
-    // Fechas de cierre (iniciando el segundo día de venta) - usando hora de Monterrey
-    const fechaCierreKinder = parseDateString("2025-12-02"); // Cierra iniciando el 2 de dic (vende 1 y 2 de dic)
-    const fechaCierrePrimaria = parseDateString("2025-12-05"); // Cierra iniciando el 5 de dic (vende 4 y 5 de dic)
-    const fechaCierreSecundaria = parseDateString("2025-12-09"); // Cierra iniciando el 9 de dic (vende 8 y 9 de dic)
+    // Fechas de cierre - cierra a las 13:00 (1 PM) del día indicado
+    const fechaCierreKinder = "2025-12-02"; // Cierra a las 13:00 del 2 de dic
+    const fechaCierrePrimaria = "2025-12-05"; // Cierra a las 13:00 del 5 de dic
+    const fechaCierreSecundaria = "2025-12-09"; // Cierra a las 13:00 del 9 de dic
+
+    // Función helper para verificar si ya pasó la hora de cierre
+    const isAfterClosingTime = (closeDateStr: string): boolean => {
+      const [closeYear, closeMonth, closeDay] = closeDateStr.split('-').map(Number);
+      
+      // Comparar año
+      if (currentYear > closeYear) return true;
+      if (currentYear < closeYear) return false;
+      
+      // Comparar mes
+      if (currentMonth > closeMonth) return true;
+      if (currentMonth < closeMonth) return false;
+      
+      // Comparar día
+      if (currentDay > closeDay) return true;
+      if (currentDay < closeDay) return false;
+      
+      // Si es el mismo día, verificar si ya pasaron las 13:00
+      return currentHour >= 13;
+    };
 
     // Validar según la función del alumno
     if (levelClose === 1) {
       // Función 1: Maternal + Kinder + 1° primaria
-      // Vende: 1-2 diciembre, Cierra: iniciando el 2 de diciembre
-      if (today >= fechaCierreKinder) {
-        alert("Las reservas de boletos para la 1ra Función ya han concluido. El período de venta terminó el 2 de diciembre. Aún puedes eliminar asientos si lo necesitas.");
+      // Vende: 1-2 diciembre, Cierra: a las 13:00 del 2 de diciembre
+      if (isAfterClosingTime(fechaCierreKinder)) {
+        alert("Las reservas de boletos para la 1ra Función ya han concluido. El período de venta terminó el 2 de diciembre a la 1:00 PM. Aún puedes eliminar asientos si lo necesitas.");
         return false;
       }
     } else if (levelClose === 2) {
       // Función 2: 2°-5° primaria
-      // Vende: 4-5 diciembre, Cierra: iniciando el 5 de diciembre
-      if (today >= fechaCierrePrimaria) {
-        alert("Las reservas de boletos para la 2da Función ya han concluido. El período de venta terminó el 5 de diciembre. Aún puedes eliminar asientos si lo necesitas.");
+      // Vende: 4-5 diciembre, Cierra: a las 13:00 del 5 de diciembre
+      if (isAfterClosingTime(fechaCierrePrimaria)) {
+        alert("Las reservas de boletos para la 2da Función ya han concluido. El período de venta terminó el 5 de diciembre a la 1:00 PM. Aún puedes eliminar asientos si lo necesitas.");
         return false;
       }
     } else if (levelClose === 3) {
       // Función 3: 6° primaria + Secundaria
-      // Vende: 8-9 diciembre, Cierra: iniciando el 9 de diciembre
-      if (today >= fechaCierreSecundaria) {
-        alert("Las reservas de boletos para la 3ra Función ya han concluido. El período de venta terminó el 9 de diciembre. Aún puedes eliminar asientos si lo necesitas.");
+      // Vende: 8-9 diciembre, Cierra: a las 13:00 del 9 de diciembre
+      if (isAfterClosingTime(fechaCierreSecundaria)) {
+        alert("Las reservas de boletos para la 3ra Función ya han concluido. El período de venta terminó el 9 de diciembre a la 1:00 PM. Aún puedes eliminar asientos si lo necesitas.");
         return false;
       }
     }

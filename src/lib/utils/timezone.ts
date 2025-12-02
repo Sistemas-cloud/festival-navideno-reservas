@@ -82,3 +82,97 @@ export function isDateReached(dateStr: string): boolean {
   return today.getTime() >= targetDate.getTime();
 }
 
+/**
+ * Obtiene la fecha y hora actual en zona horaria de Monterrey
+ * Retorna un objeto con los componentes de fecha y hora
+ */
+function getDateTimeInMonterrey(): { year: number; month: number; day: number; hour: number; minute: number; second: number } {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: TIMEZONE_MONTERREY,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(now);
+  return {
+    year: parseInt(parts.find(p => p.type === 'year')?.value || '0'),
+    month: parseInt(parts.find(p => p.type === 'month')?.value || '0'),
+    day: parseInt(parts.find(p => p.type === 'day')?.value || '0'),
+    hour: parseInt(parts.find(p => p.type === 'hour')?.value || '0'),
+    minute: parseInt(parts.find(p => p.type === 'minute')?.value || '0'),
+    second: parseInt(parts.find(p => p.type === 'second')?.value || '0')
+  };
+}
+
+/**
+ * Verifica si la fecha/hora actual en Monterrey ha pasado la hora de cierre
+ * El cierre es a las 13:00 (1 PM) del día especificado, no a medianoche
+ * @param closingDateStr Fecha de cierre en formato YYYY-MM-DD
+ */
+export function isAfterClosingTime(closingDateStr: string): boolean {
+  const [closeYear, closeMonth, closeDay] = closingDateStr.split('-').map(Number);
+  const now = getDateTimeInMonterrey();
+  
+  // Comparar primero el año
+  if (now.year > closeYear) return true;
+  if (now.year < closeYear) return false;
+  
+  // Comparar el mes
+  if (now.month > closeMonth) return true;
+  if (now.month < closeMonth) return false;
+  
+  // Comparar el día y hora
+  if (now.day > closeDay) return true;
+  if (now.day < closeDay) return false;
+  
+  // Si es el mismo día, verificar si ya pasaron las 13:00
+  // Cierra a las 13:00, así que si la hora es >= 13, está cerrado
+  return now.hour >= 13;
+}
+
+/**
+ * Crea una fecha de cierre a partir de un string YYYY-MM-DD
+ * Esta función se usa para comparaciones y establece la hora de cierre a las 13:00
+ * @param dateStr String en formato YYYY-MM-DD
+ * @returns Date representando las 13:00 del día indicado en Monterrey
+ */
+export function parseClosingDateString(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  
+  // Crear una fecha representando las 13:00 en Monterrey
+  // Usamos un enfoque simple: crear la fecha y ajustar para Monterrey
+  const dateStrFormatted = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T13:00:00`;
+  
+  // Obtener la representación de esta fecha/hora en Monterrey
+  // Primero creamos la fecha como si fuera local
+  const localDate = new Date(dateStrFormatted);
+  
+  // Obtenemos cómo se vería esta fecha en Monterrey
+  const monterreyFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: TIMEZONE_MONTERREY,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  
+  const monterreyParts = monterreyFormatter.formatToParts(localDate);
+  const monterreyHour = parseInt(monterreyParts.find(p => p.type === 'hour')?.value || '0');
+  
+  // Calcular el offset necesario para que en Monterrey sean las 13:00
+  const hourDiff = 13 - monterreyHour;
+  
+  // Ajustar la fecha
+  const adjustedDate = new Date(localDate.getTime() + hourDiff * 60 * 60 * 1000);
+  
+  return adjustedDate;
+}
+

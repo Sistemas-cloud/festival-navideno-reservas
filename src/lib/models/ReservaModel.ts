@@ -1,7 +1,7 @@
 import { getSupabaseClient, Reserva } from '../supabase';
 import { isInternalUser, findInternalUser } from '../config/internalUsers';
 import { formatPaymentDate } from '../utils/paymentDates';
-import { getTodayInMonterrey, parseDateString } from '../utils/timezone';
+import { getTodayInMonterrey, parseDateString, isAfterClosingTime } from '../utils/timezone';
 
 export class ReservaModel {
   
@@ -884,31 +884,31 @@ export class ReservaModel {
       const grado = alumno.alumno_grado;
       const funcion = this.calcularFuncion(nivel, grado);
 
-      // Fechas de cierre (iniciando el segundo día de venta) - usando hora de Monterrey
-      const fechaCierreFuncion1 = parseDateString("2025-12-02");
-      const fechaCierreFuncion2 = parseDateString("2025-12-05");
-      const fechaCierreFuncion3 = parseDateString("2025-12-09");
+      // Fechas de cierre - cierra a las 13:00 (1 PM) del día indicado
+      const fechaCierreFuncion1 = "2025-12-02"; // Cierra a las 13:00 del 2 de dic
+      const fechaCierreFuncion2 = "2025-12-05"; // Cierra a las 13:00 del 5 de dic
+      const fechaCierreFuncion3 = "2025-12-09"; // Cierra a las 13:00 del 9 de dic
 
-      const today = getTodayInMonterrey();
-
-      let fechaCierre: Date;
+      let fechaCierreStr: string;
       let nombreFuncion: string;
 
       if (funcion === 1) {
-        fechaCierre = fechaCierreFuncion1;
+        fechaCierreStr = fechaCierreFuncion1;
         nombreFuncion = '1ra Función';
       } else if (funcion === 2) {
-        fechaCierre = fechaCierreFuncion2;
+        fechaCierreStr = fechaCierreFuncion2;
         nombreFuncion = '2da Función';
       } else {
-        fechaCierre = fechaCierreFuncion3;
+        fechaCierreStr = fechaCierreFuncion3;
         nombreFuncion = '3ra Función';
       }
 
-      if (today >= fechaCierre) {
+      // Verificar si ya pasó la hora de cierre (13:00 del día indicado)
+      if (isAfterClosingTime(fechaCierreStr)) {
+        const fechaCierre = parseDateString(fechaCierreStr);
         return {
           cerrado: true,
-          mensaje: `Las reservas de boletos para la ${nombreFuncion} ya han concluido. El período de venta terminó el ${fechaCierre.toLocaleDateString('es-MX')}. Aún puedes eliminar asientos si lo necesitas.`
+          mensaje: `Las reservas de boletos para la ${nombreFuncion} ya han concluido. El período de venta terminó el ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM. Aún puedes eliminar asientos si lo necesitas.`
         };
       }
 
