@@ -159,37 +159,45 @@ export const Dashboard: React.FC = () => {
   // Si es usuario interno, usar función asignada directamente
   if (userData.isInternal && userData.funcionAsignada) {
     levelClose = userData.funcionAsignada;
+    console.log(`🔍 Dashboard - Usuario interno detectado, función asignada: ${levelClose}`);
   } else {
-    // Lógica normal para alumnos
-    hermanos.forEach((hermano: HermanosData) => {
-      if (hermano.control === alumnoRef) {
-        const nivel = hermano.nivel;
-        const grado = hermano.grado;
-        
-        if (nivel === 1 || nivel === 2) {
-          // Maternal (nivel 1) y Kinder (nivel 2) → Función 1
+    // Lógica normal para alumnos - usar comparación de strings para evitar problemas de tipo
+    const alumnoActual = hermanos.find((hermano: HermanosData) => String(hermano.control) === String(alumnoRef));
+    
+    if (alumnoActual) {
+      const nivel = alumnoActual.nivel;
+      const grado = alumnoActual.grado;
+      
+      console.log(`🔍 Dashboard - Alumno encontrado: control=${alumnoActual.control}, nivel=${nivel}, grado=${grado}`);
+      
+      if (nivel === 1 || nivel === 2) {
+        // Maternal (nivel 1) y Kinder (nivel 2) → Función 1
+        levelClose = 1;
+      } else if (nivel === 3) {
+        // Primaria
+        if (grado === 1) {
+          // 1° primaria → Función 1
           levelClose = 1;
-        } else if (nivel === 3) {
-          // Primaria
-          if (grado === 1) {
-            // 1° primaria → Función 1
-            levelClose = 1;
-          } else if (grado >= 2 && grado <= 5) {
-            // 2°-5° primaria → Función 2
-            levelClose = 2;
-          } else if (grado === 6) {
-            // 6° primaria → Función 3
-            levelClose = 3;
-          } else {
-            // Por defecto → Función 1
-            levelClose = 1;
-          }
-        } else if (nivel === 4) {
-          // Secundaria → Función 3
+        } else if (grado >= 2 && grado <= 5) {
+          // 2°-5° primaria → Función 2
+          levelClose = 2;
+        } else if (grado === 6) {
+          // 6° primaria → Función 3
           levelClose = 3;
+        } else {
+          // Por defecto → Función 1
+          levelClose = 1;
         }
+      } else if (nivel === 4) {
+        // Secundaria → Función 3
+        levelClose = 3;
       }
-    });
+      
+      console.log(`🔍 Dashboard - Función calculada para validación de cierre: ${levelClose}`);
+    } else {
+      console.warn(`⚠️ Dashboard - No se encontró el alumno ${alumnoRef} en la lista de hermanos, usando función 1 por defecto`);
+      levelClose = 1;
+    }
   }
 
   // Función helper para obtener la fecha actual en hora de Monterrey (compatible con cliente)
@@ -224,8 +232,11 @@ export const Dashboard: React.FC = () => {
   const validateDates = () => {
     // Usuarios internos siempre pueden reservar
     if (userData.isInternal) {
+      console.log('✅ Dashboard validateDates - Usuario interno, acceso permitido');
       return true;
     }
+    
+    console.log(`🔍 Dashboard validateDates - Validando para función: ${levelClose}`);
     
     // Obtener la fecha y hora actual en Monterrey
     const now = new Date();
@@ -246,9 +257,9 @@ export const Dashboard: React.FC = () => {
     const currentHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
 
     // Fechas de cierre - cierra a las 13:00 (1 PM) del día indicado
-    const fechaCierreKinder = "2025-12-02"; // Cierra a las 13:00 del 2 de dic
-    const fechaCierrePrimaria = "2025-12-05"; // Cierra a las 13:00 del 5 de dic
-    const fechaCierreSecundaria = "2025-12-09"; // Cierra a las 13:00 del 9 de dic
+    const fechaCierreFuncion1 = "2025-12-02"; // Cierra a las 13:00 del 2 de dic
+    const fechaCierreFuncion2 = "2025-12-05"; // Cierra a las 13:00 del 5 de dic
+    const fechaCierreFuncion3 = "2025-12-09"; // Cierra a las 13:00 del 9 de dic
 
     // Función helper para verificar si ya pasó la hora de cierre
     const isAfterClosingTime = (closeDateStr: string): boolean => {
@@ -270,30 +281,39 @@ export const Dashboard: React.FC = () => {
       return currentHour >= 13;
     };
 
-    // Validar según la función del alumno
+    // Validar según la función del alumno - SOLO validar la función correspondiente
     if (levelClose === 1) {
       // Función 1: Maternal + Kinder + 1° primaria
       // Vende: 1-2 diciembre, Cierra: a las 13:00 del 2 de diciembre
-      if (isAfterClosingTime(fechaCierreKinder)) {
+      const yaCerro = isAfterClosingTime(fechaCierreFuncion1);
+      console.log(`🔍 Dashboard validateDates - Función 1: fechaCierre=${fechaCierreFuncion1}, yaCerro=${yaCerro}`);
+      if (yaCerro) {
         alert("Las reservas de boletos para la 1ra Función ya han concluido. El período de venta terminó el 2 de diciembre a la 1:00 PM. Aún puedes eliminar asientos si lo necesitas.");
         return false;
       }
     } else if (levelClose === 2) {
       // Función 2: 2°-5° primaria
       // Vende: 4-5 diciembre, Cierra: a las 13:00 del 5 de diciembre
-      if (isAfterClosingTime(fechaCierrePrimaria)) {
+      const yaCerro = isAfterClosingTime(fechaCierreFuncion2);
+      console.log(`🔍 Dashboard validateDates - Función 2: fechaCierre=${fechaCierreFuncion2}, yaCerro=${yaCerro}`);
+      if (yaCerro) {
         alert("Las reservas de boletos para la 2da Función ya han concluido. El período de venta terminó el 5 de diciembre a la 1:00 PM. Aún puedes eliminar asientos si lo necesitas.");
         return false;
       }
     } else if (levelClose === 3) {
       // Función 3: 6° primaria + Secundaria
       // Vende: 8-9 diciembre, Cierra: a las 13:00 del 9 de diciembre
-      if (isAfterClosingTime(fechaCierreSecundaria)) {
+      const yaCerro = isAfterClosingTime(fechaCierreFuncion3);
+      console.log(`🔍 Dashboard validateDates - Función 3: fechaCierre=${fechaCierreFuncion3}, yaCerro=${yaCerro}`);
+      if (yaCerro) {
         alert("Las reservas de boletos para la 3ra Función ya han concluido. El período de venta terminó el 9 de diciembre a la 1:00 PM. Aún puedes eliminar asientos si lo necesitas.");
         return false;
       }
+    } else {
+      console.warn(`⚠️ Dashboard validateDates - Función desconocida: ${levelClose}, permitiendo acceso`);
     }
 
+    console.log(`✅ Dashboard validateDates - Validación pasada para función ${levelClose}`);
     return true;
   };
 

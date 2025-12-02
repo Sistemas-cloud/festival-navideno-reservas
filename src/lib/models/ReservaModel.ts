@@ -903,15 +903,22 @@ export class ReservaModel {
         nombreFuncion = '3ra Función';
       }
 
+      console.log(`🔍 isPortalCerrado - Alumno ${alumnoRef}: función=${funcion} (${nombreFuncion}), fechaCierre=${fechaCierreStr}`);
+      
       // Verificar si ya pasó la hora de cierre (13:00 del día indicado)
-      if (isAfterClosingTime(fechaCierreStr)) {
+      const yaCerro = isAfterClosingTime(fechaCierreStr);
+      console.log(`🔍 isPortalCerrado - Verificación de cierre para ${nombreFuncion}: fechaCierre=${fechaCierreStr}, yaCerro=${yaCerro}`);
+      
+      if (yaCerro) {
         const fechaCierre = parseDateString(fechaCierreStr);
+        console.log(`🚫 isPortalCerrado - Portal CERRADO para ${nombreFuncion} (alumno ${alumnoRef})`);
         return {
           cerrado: true,
           mensaje: `Las reservas de boletos para la ${nombreFuncion} ya han concluido. El período de venta terminó el ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM. Aún puedes eliminar asientos si lo necesitas.`
         };
       }
 
+      console.log(`✅ isPortalCerrado - Portal ABIERTO para ${nombreFuncion} (alumno ${alumnoRef})`);
       return { cerrado: false };
 
     } catch (error) {
