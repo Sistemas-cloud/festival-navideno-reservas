@@ -131,7 +131,7 @@ export const AdminSeatMap: React.FC<AdminSeatMapProps> = ({ section, ocupados, r
               <div className="flex flex-nowrap gap-1 justify-start">
                 {Array.from({ length: config.rows[row] }, (_, i) => i + 1).map(seat => {
                   const isResaltado = resaltados.some(r => r.fila === row && r.asiento === seat);
-                  return (
+  return (
                     <div key={`${row}-${seat}`} className={getSeatClass(row, seat)}>
                       <span className={`relative z-10 ${isResaltado ? 'drop-shadow-md' : ''}`}>{seat}</span>
                     </div>

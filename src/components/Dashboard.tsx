@@ -169,35 +169,35 @@ export const Dashboard: React.FC = () => {
       const grado = alumnoActual.grado;
       
       console.log(`🔍 Dashboard - Alumno encontrado: control=${alumnoActual.control}, nivel=${nivel}, grado=${grado}`);
-      
-      if (nivel === 1 || nivel === 2) {
-        // Maternal (nivel 1) y Kinder (nivel 2) → Función 1
-        levelClose = 1;
-      } else if (nivel === 3) {
-        // Primaria
-        if (grado === 1) {
-          // 1° primaria → Función 1
+        
+        if (nivel === 1 || nivel === 2) {
+          // Maternal (nivel 1) y Kinder (nivel 2) → Función 1
           levelClose = 1;
-        } else if (grado >= 2 && grado <= 5) {
-          // 2°-5° primaria → Función 2
-          levelClose = 2;
-        } else if (grado === 6) {
-          // 6° primaria → Función 3
+        } else if (nivel === 3) {
+          // Primaria
+          if (grado === 1) {
+            // 1° primaria → Función 1
+            levelClose = 1;
+          } else if (grado >= 2 && grado <= 5) {
+            // 2°-5° primaria → Función 2
+            levelClose = 2;
+          } else if (grado === 6) {
+            // 6° primaria → Función 3
+            levelClose = 3;
+          } else {
+            // Por defecto → Función 1
+            levelClose = 1;
+          }
+        } else if (nivel === 4) {
+          // Secundaria → Función 3
           levelClose = 3;
-        } else {
-          // Por defecto → Función 1
-          levelClose = 1;
         }
-      } else if (nivel === 4) {
-        // Secundaria → Función 3
-        levelClose = 3;
-      }
       
       console.log(`🔍 Dashboard - Función calculada para validación de cierre: ${levelClose}`);
     } else {
       console.warn(`⚠️ Dashboard - No se encontró el alumno ${alumnoRef} en la lista de hermanos, usando función 1 por defecto`);
       levelClose = 1;
-    }
+      }
   }
 
   // Función helper para obtener la fecha actual en hora de Monterrey (compatible con cliente)

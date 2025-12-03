@@ -410,17 +410,17 @@ export default function AdminPage() {
                           Control del Alumno Menor (canje)
                         </label>
                         <div className="flex gap-2">
-                          <input
+                        <input
                             className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
-                            value={controlMenor}
+                          value={controlMenor}
                             onChange={(e) => {
                               setControlMenor(e.target.value);
                               setBoletosMenor([]);
                               setFechaPagoMenor(null);
                               setTotalMenor(null);
                             }}
-                            placeholder="Ej. 12345"
-                          />
+                          placeholder="Ej. 12345"
+                        />
                           <button
                             type="button"
                             disabled={!controlMenor || loadingConsultaPago}
@@ -462,17 +462,17 @@ export default function AdminPage() {
                           Control del Hermano Mayor
                         </label>
                         <div className="flex gap-2">
-                          <input
+                        <input
                             className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
-                            value={controlMayor}
+                          value={controlMayor}
                             onChange={(e) => {
                               setControlMayor(e.target.value);
                               setBoletosMayor([]);
                               setFechaPagoMayor(null);
                               setTotalMayor(null);
                             }}
-                            placeholder="Ej. 67890"
-                          />
+                          placeholder="Ej. 67890"
+                        />
                           <button
                             type="button"
                             disabled={!controlMayor || loadingConsultaPago}

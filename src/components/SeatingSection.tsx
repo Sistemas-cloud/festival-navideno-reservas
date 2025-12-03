@@ -239,15 +239,15 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
             <div key={row} className="row mb-2">
               <div className="text-xs text-gray-600 mb-1 text-right">Fila {row}</div>
               <div className="flex flex-nowrap gap-1 justify-end">
-                {Array.from({ length: config.rows[row] }, (_, i) => i + 1).map(seat => (
-                  <div
-                    key={`${row}${seat}`}
-                    className={getSeatClass(row, seat)}
-                    onClick={() => handleSeatClick(row, seat)}
-                  >
-                    {`${row}${seat}`}
-                  </div>
-                ))}
+              {Array.from({ length: config.rows[row] }, (_, i) => i + 1).map(seat => (
+                <div
+                  key={`${row}${seat}`}
+                  className={getSeatClass(row, seat)}
+                  onClick={() => handleSeatClick(row, seat)}
+                >
+                  {`${row}${seat}`}
+                </div>
+              ))}
               </div>
             </div>
           ))}
@@ -259,15 +259,15 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
             <div key={row} className="row mb-2">
               <div className="text-xs text-gray-600 mb-1 text-left">Fila {row}</div>
               <div className="flex flex-nowrap gap-1 justify-start">
-                {Array.from({ length: config.rows[row] }, (_, i) => i + 1).map(seat => (
-                  <div
-                    key={`${row}${seat}`}
-                    className={getSeatClass(row, seat)}
-                    onClick={() => handleSeatClick(row, seat)}
-                  >
-                    {`${row}${seat}`}
-                  </div>
-                ))}
+              {Array.from({ length: config.rows[row] }, (_, i) => i + 1).map(seat => (
+                <div
+                  key={`${row}${seat}`}
+                  className={getSeatClass(row, seat)}
+                  onClick={() => handleSeatClick(row, seat)}
+                >
+                  {`${row}${seat}`}
+                </div>
+              ))}
               </div>
             </div>
           ))}
