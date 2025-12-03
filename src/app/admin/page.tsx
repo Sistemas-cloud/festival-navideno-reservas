@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { AdminSeatMap } from '@/components/admin/AdminSeatMap';
 import { validateAdminCredentials, canAccessFunction, type AdminUser } from '@/lib/config/adminUsers';
+import { formatPaymentDate } from '@/lib/utils/paymentDates';
 
 interface CanjeResult {
   control_menor: number;
@@ -46,6 +47,7 @@ interface ReservaPorControl {
   zona: string;
   nivel: number;
   precio?: number;
+  fecha_pago?: string | null;
 }
 
 export default function AdminPage() {
@@ -59,6 +61,13 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CanjeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Estados para mostrar boletos y fecha de pago en canje
+  const [boletosMenor, setBoletosMenor] = useState<ReservaPorControl[]>([]);
+  const [boletosMayor, setBoletosMayor] = useState<ReservaPorControl[]>([]);
+  const [fechaPagoMenor, setFechaPagoMenor] = useState<string | null>(null);
+  const [fechaPagoMayor, setFechaPagoMayor] = useState<string | null>(null);
+  const [totalMenor, setTotalMenor] = useState<number | null>(null);
+  const [totalMayor, setTotalMayor] = useState<number | null>(null);
 
   // Pago por control
   const [controlPago, setControlPago] = useState('');
@@ -66,6 +75,9 @@ export default function AdminPage() {
   const [montoRecibidoPago, setMontoRecibidoPago] = useState('');
   const [totalAPagarPago, setTotalAPagarPago] = useState<number | null>(null);
   const [loadingConsultaPago, setLoadingConsultaPago] = useState(false);
+  // Estados para mostrar boletos y fecha de pago en pago por control
+  const [boletosPago, setBoletosPago] = useState<ReservaPorControl[]>([]);
+  const [fechaPagoPago, setFechaPagoPago] = useState<string | null>(null);
   const [funcionMapa, setFuncionMapa] = useState<number>(1);
   
   // Canje
@@ -189,7 +201,23 @@ export default function AdminPage() {
               });
               const d = await r.json();
               if (r.ok && d.success) {
-                const arr = (d.data || []).filter((x: ReservaPorControl) => [2,3].includes(Number(x.nivel)));
+                const todasReservas = (d.data || []) as ReservaPorControl[];
+                const reservasPendientes = todasReservas.filter((x: ReservaPorControl) => x.estado === 'reservado');
+                const total = reservasPendientes.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
+                const reservaConFecha = reservasPendientes.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
+                
+                // Guardar boletos y fecha de pago según el control
+                if (entry.id === controlMenor) {
+                  setBoletosMenor(reservasPendientes);
+                  setFechaPagoMenor(reservaConFecha?.fecha_pago || null);
+                  setTotalMenor(total);
+                } else if (entry.id === controlMayor) {
+                  setBoletosMayor(reservasPendientes);
+                  setFechaPagoMayor(reservaConFecha?.fecha_pago || null);
+                  setTotalMayor(total);
+                }
+                
+                const arr = todasReservas.filter((x: ReservaPorControl) => [2,3].includes(Number(x.nivel)));
                 // Elegir función 2 si existe, si no 3
                 const has2 = arr.some((x: ReservaPorControl) => Number(x.nivel) === 2);
                 const has3 = arr.some((x: ReservaPorControl) => Number(x.nivel) === 3);
@@ -381,25 +409,182 @@ export default function AdminPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Control del Alumno Menor (canje)
                         </label>
-                        <input
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
-                          value={controlMenor}
-                          onChange={(e) => setControlMenor(e.target.value)}
-                          placeholder="Ej. 12345"
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                            value={controlMenor}
+                            onChange={(e) => {
+                              setControlMenor(e.target.value);
+                              setBoletosMenor([]);
+                              setFechaPagoMenor(null);
+                              setTotalMenor(null);
+                            }}
+                            placeholder="Ej. 12345"
+                          />
+                          <button
+                            type="button"
+                            disabled={!controlMenor || loadingConsultaPago}
+                            onClick={async () => {
+                              setError(null);
+                              setLoadingConsultaPago(true);
+                              try {
+                                const res = await fetch('/api/admin/reservas-por-control', {
+                                  method: 'POST',
+                                  headers: getAdminHeaders(),
+                                  body: JSON.stringify({ control: controlMenor })
+                                });
+                                const data = await res.json();
+                                if (res.ok && data.success) {
+                                  const reservas = (data.data || []) as ReservaPorControl[];
+                                  const reservasPendientes = reservas.filter((r: ReservaPorControl) => r.estado === 'reservado');
+                                  const total = reservasPendientes.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
+                                  setBoletosMenor(reservasPendientes);
+                                  setTotalMenor(total);
+                                  const reservaConFecha = reservasPendientes.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
+                                  setFechaPagoMenor(reservaConFecha?.fecha_pago || null);
+                                } else {
+                                  setError('No se encontraron reservas para el control menor');
+                                }
+                              } catch {
+                                setError('Error al consultar reservas del control menor');
+                              } finally {
+                                setLoadingConsultaPago(false);
+                              }
+                            }}
+                            className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all font-medium"
+                          >
+                            Consultar
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Control del Hermano Mayor
                         </label>
-                        <input
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
-                          value={controlMayor}
-                          onChange={(e) => setControlMayor(e.target.value)}
-                          placeholder="Ej. 67890"
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                            value={controlMayor}
+                            onChange={(e) => {
+                              setControlMayor(e.target.value);
+                              setBoletosMayor([]);
+                              setFechaPagoMayor(null);
+                              setTotalMayor(null);
+                            }}
+                            placeholder="Ej. 67890"
+                          />
+                          <button
+                            type="button"
+                            disabled={!controlMayor || loadingConsultaPago}
+                            onClick={async () => {
+                              setError(null);
+                              setLoadingConsultaPago(true);
+                              try {
+                                const res = await fetch('/api/admin/reservas-por-control', {
+                                  method: 'POST',
+                                  headers: getAdminHeaders(),
+                                  body: JSON.stringify({ control: controlMayor })
+                                });
+                                const data = await res.json();
+                                if (res.ok && data.success) {
+                                  const reservas = (data.data || []) as ReservaPorControl[];
+                                  const reservasPendientes = reservas.filter((r: ReservaPorControl) => r.estado === 'reservado');
+                                  const total = reservasPendientes.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
+                                  setBoletosMayor(reservasPendientes);
+                                  setTotalMayor(total);
+                                  const reservaConFecha = reservasPendientes.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
+                                  setFechaPagoMayor(reservaConFecha?.fecha_pago || null);
+                                } else {
+                                  setError('No se encontraron reservas para el control mayor');
+                                }
+                              } catch {
+                                setError('Error al consultar reservas del control mayor');
+                              } finally {
+                                setLoadingConsultaPago(false);
+                              }
+                            }}
+                            className="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-all font-medium"
+                          >
+                            Consultar
+                          </button>
+                        </div>
                       </div>
                     </div>
+
+                    {/* Mostrar información de boletos y fechas de pago para canje */}
+                    {(boletosMenor.length > 0 || boletosMayor.length > 0 || fechaPagoMenor || fechaPagoMayor) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Información Control Menor */}
+                        {(boletosMenor.length > 0 || fechaPagoMenor || totalMenor !== null) && (
+                          <div className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-xl p-5 border-2 border-pink-200">
+                            <h3 className="text-lg font-bold text-gray-900 mb-3">Control Menor</h3>
+                            
+                            {fechaPagoMenor && (
+                              <div className="mb-3">
+                                <p className="text-xs text-gray-600 font-medium mb-1">📅 Día de Pago</p>
+                                <p className="text-sm font-bold text-pink-900">{formatPaymentDate(fechaPagoMenor)}</p>
+                              </div>
+                            )}
+                            
+                            {totalMenor !== null && (
+                              <div className="mb-3">
+                                <p className="text-xs text-gray-600 font-medium mb-1">💰 Total</p>
+                                <p className="text-lg font-bold text-pink-900">{formatCurrency(totalMenor)}</p>
+                              </div>
+                            )}
+                            
+                            {boletosMenor.length > 0 && (
+                              <div>
+                                <p className="text-xs text-gray-600 font-medium mb-2">🎫 Boletos ({boletosMenor.length})</p>
+                                <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto">
+                                  {boletosMenor.map((boleto, index) => (
+                                    <div key={index} className="bg-white rounded p-1.5 border border-pink-200 text-center">
+                                      <p className="text-xs font-bold text-pink-900">{boleto.fila}{boleto.asiento}</p>
+                                      <p className="text-xs text-gray-500">{boleto.zona}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Información Control Mayor */}
+                        {(boletosMayor.length > 0 || fechaPagoMayor || totalMayor !== null) && (
+                          <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-200">
+                            <h3 className="text-lg font-bold text-gray-900 mb-3">Control Mayor</h3>
+                            
+                            {fechaPagoMayor && (
+                              <div className="mb-3">
+                                <p className="text-xs text-gray-600 font-medium mb-1">📅 Día de Pago</p>
+                                <p className="text-sm font-bold text-indigo-900">{formatPaymentDate(fechaPagoMayor)}</p>
+                              </div>
+                            )}
+                            
+                            {totalMayor !== null && (
+                              <div className="mb-3">
+                                <p className="text-xs text-gray-600 font-medium mb-1">💰 Total</p>
+                                <p className="text-lg font-bold text-indigo-900">{formatCurrency(totalMayor)}</p>
+                              </div>
+                            )}
+                            
+                            {boletosMayor.length > 0 && (
+                              <div>
+                                <p className="text-xs text-gray-600 font-medium mb-2">🎫 Boletos ({boletosMayor.length})</p>
+                                <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto">
+                                  {boletosMayor.map((boleto, index) => (
+                                    <div key={index} className="bg-white rounded p-1.5 border border-indigo-200 text-center">
+                                      <p className="text-xs font-bold text-indigo-900">{boleto.fila}{boleto.asiento}</p>
+                                      <p className="text-xs text-gray-500">{boleto.zona}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {error && (
                       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
@@ -615,6 +800,8 @@ export default function AdminPage() {
                             setTotalAPagarPago(null);
                             setMontoRecibidoPago('');
                             setPagoResultado(null);
+                            setBoletosPago([]);
+                            setFechaPagoPago(null);
                           }}
                           placeholder="Ej. 12345"
                         />
@@ -624,9 +811,11 @@ export default function AdminPage() {
                           onClick={async () => {
                             setError(null);
                             setTotalAPagarPago(null);
+                            setBoletosPago([]);
+                            setFechaPagoPago(null);
                             setLoadingConsultaPago(true);
                             try {
-                              // Primero consultar las reservas para obtener el total
+                              // Consultar las reservas para obtener boletos, total y fecha de pago
                               const resConsulta = await fetch('/api/admin/reservas-por-control', {
                                 method: 'POST',
                                 headers: getAdminHeaders(),
@@ -634,10 +823,22 @@ export default function AdminPage() {
                               });
                               const dataConsulta = await resConsulta.json();
                               if (resConsulta.ok && dataConsulta.success) {
+                                const todasReservas = (dataConsulta.data || []) as ReservaPorControl[];
                                 // Calcular total sumando los precios de las reservas pendientes
-                                const reservasPendientes = (dataConsulta.data || []).filter((r: ReservaPorControl) => r.estado === 'reservado');
+                                const reservasPendientes = todasReservas.filter((r: ReservaPorControl) => r.estado === 'reservado');
                                 const total = reservasPendientes.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
                                 setTotalAPagarPago(total);
+                                
+                                // Guardar los boletos reservados para mostrar
+                                setBoletosPago(reservasPendientes);
+                                
+                                // Obtener la fecha de pago (debería ser la misma para todas las reservas)
+                                const reservaConFecha = reservasPendientes.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
+                                if (reservaConFecha && reservaConFecha.fecha_pago) {
+                                  setFechaPagoPago(reservaConFecha.fecha_pago);
+                                } else {
+                                  setFechaPagoPago(null);
+                                }
                               } else {
                                 setError('No se encontraron reservas pendientes para este control');
                               }
@@ -653,6 +854,40 @@ export default function AdminPage() {
                         </button>
                       </div>
                     </div>
+
+                    {/* Mostrar Boletos Reservados y Fecha de Pago */}
+                    {(boletosPago.length > 0 || fechaPagoPago) && (
+                      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-200">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Información de Reservas</h3>
+                        
+                        {/* Fecha de Pago */}
+                        {fechaPagoPago && (
+                          <div className="mb-4">
+                            <p className="text-sm text-gray-600 font-medium mb-1">📅 Día de Pago Asignado</p>
+                            <p className="text-xl font-bold text-indigo-900">{formatPaymentDate(fechaPagoPago)}</p>
+                          </div>
+                        )}
+                        
+                        {/* Boletos Reservados */}
+                        {boletosPago.length > 0 && (
+                          <div>
+                            <p className="text-sm text-gray-600 font-medium mb-2">🎫 Boletos Reservados ({boletosPago.length})</p>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                              {boletosPago.map((boleto, index) => (
+                                <div key={index} className="bg-white rounded-lg p-2 border border-indigo-200 text-center">
+                                  <p className="text-xs text-gray-500">Fila {boleto.fila}</p>
+                                  <p className="text-sm font-bold text-indigo-900">Asiento {boleto.asiento}</p>
+                                  <p className="text-xs text-gray-600">{boleto.zona}</p>
+                                  {boleto.precio && (
+                                    <p className="text-xs font-semibold text-green-600 mt-1">{formatCurrency(boleto.precio)}</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Mostrar Total a Pagar */}
                     {totalAPagarPago !== null && (
@@ -749,6 +984,8 @@ export default function AdminPage() {
                             setMontoRecibidoPago('');
                             setTotalAPagarPago(null);
                             setControlPago('');
+                            setBoletosPago([]);
+                            setFechaPagoPago(null);
                           }
                         } catch {
                           setError('Error de red');

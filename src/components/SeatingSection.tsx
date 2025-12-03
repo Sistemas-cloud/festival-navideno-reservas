@@ -226,41 +226,49 @@ export const SeatingSection: React.FC<SeatingSectionProps> = ({
   };
 
   const renderSpecialLayout = () => {
+    // II arriba de HH, alineados a la derecha
     const leftRows = ['II', 'HH'];
-    const rightRows = ['JJ', 'KK'];
+    // KK arriba de JJ, alineados a la izquierda
+    const rightRows = ['KK', 'JJ'];
 
     return (
       <div className="flex justify-center space-x-8">
-        <div className="left-container">
-          <h3 className="text-center mb-4 font-bold text-lg">Palcos izquierda</h3>
+        {/* Contenedor izquierdo: II arriba, HH abajo, alineados a la derecha */}
+        <div className="flex flex-col items-end">
           {leftRows.map(row => (
             <div key={row} className="row mb-2">
-              {Array.from({ length: config.rows[row] }, (_, i) => i + 1).map(seat => (
-                <div
-                  key={`${row}${seat}`}
-                  className={getSeatClass(row, seat)}
-                  onClick={() => handleSeatClick(row, seat)}
-                >
-                  {`${row}${seat}`}
-                </div>
-              ))}
+              <div className="text-xs text-gray-600 mb-1 text-right">Fila {row}</div>
+              <div className="flex flex-nowrap gap-1 justify-end">
+                {Array.from({ length: config.rows[row] }, (_, i) => i + 1).map(seat => (
+                  <div
+                    key={`${row}${seat}`}
+                    className={getSeatClass(row, seat)}
+                    onClick={() => handleSeatClick(row, seat)}
+                  >
+                    {`${row}${seat}`}
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
         
-        <div className="right-container">
-          <h3 className="text-center mb-4 font-bold text-lg">Palcos derecha</h3>
+        {/* Contenedor derecho: KK arriba, JJ abajo, alineados a la izquierda */}
+        <div className="flex flex-col items-start">
           {rightRows.map(row => (
             <div key={row} className="row mb-2">
-              {Array.from({ length: config.rows[row] }, (_, i) => i + 1).map(seat => (
-                <div
-                  key={`${row}${seat}`}
-                  className={getSeatClass(row, seat)}
-                  onClick={() => handleSeatClick(row, seat)}
-                >
-                  {`${row}${seat}`}
-                </div>
-              ))}
+              <div className="text-xs text-gray-600 mb-1 text-left">Fila {row}</div>
+              <div className="flex flex-nowrap gap-1 justify-start">
+                {Array.from({ length: config.rows[row] }, (_, i) => i + 1).map(seat => (
+                  <div
+                    key={`${row}${seat}`}
+                    className={getSeatClass(row, seat)}
+                    onClick={() => handleSeatClick(row, seat)}
+                  >
+                    {`${row}${seat}`}
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>

@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabase
       .from('reservas')
-      .select('fila, asiento, estado, referencia, zona, nivel, precio')
+      .select('fila, asiento, estado, referencia, zona, nivel, precio, fecha_pago')
       .eq('referencia', control)
       .in('estado', ['reservado', 'pagado']);
 

@@ -83,12 +83,12 @@ export const AdminSeatMap: React.FC<AdminSeatMapProps> = ({ section, ocupados, r
 
     if (isResaltado) {
       if (highlight?.color === 'orange') {
-        // Color naranja/ámbar vibrante con aura
-        classes += ' bg-gradient-to-br from-amber-400 to-orange-500 text-white border-orange-400';
+        // Canje Menor - verde
+        classes += ' bg-green-500 text-white border-green-600';
         classes += ' seat-aura-orange';
       } else {
-        // Color índigo/púrpura vibrante con aura
-        classes += ' bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white border-purple-400';
+        // Canje Mayor - verde
+        classes += ' bg-green-400 text-white border-green-500';
         classes += ' seat-aura-purple';
       }
     }
@@ -96,19 +96,57 @@ export const AdminSeatMap: React.FC<AdminSeatMapProps> = ({ section, ocupados, r
     return classes;
   };
 
-  return (
-    <div className="border rounded-2xl p-4 bg-white shadow-2xl">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-gray-800">Mapa: {config.name}</h3>
-        <div className="flex items-center gap-4 text-sm text-gray-800 font-medium">
-          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-gray-800 rounded mr-2 border border-gray-900/50" />Pagado</span>
-          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-red-500 rounded mr-2 border border-red-600/60" />Reservado</span>
-          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-blue-200 rounded mr-2 border border-blue-400 ring-2 ring-blue-300/60" />Accesible (PCD)</span>
-          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-green-400 rounded mr-2 border border-green-500/60" />Disponible</span>
-          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded mr-2 border border-purple-400 shadow-md" />Canje (Mayor)</span>
-          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-gradient-to-br from-amber-400 to-orange-500 rounded mr-2 border border-orange-400 shadow-md" />Canje (Menor)</span>
+  const renderSpecialLayout = () => {
+    // II arriba de HH, alineados a la derecha
+    const leftRows = ['II', 'HH'];
+    // KK arriba de JJ, alineados a la izquierda
+    const rightRows = ['KK', 'JJ'];
+
+    return (
+      <div className="flex justify-center space-x-8">
+        {/* Contenedor izquierdo: II arriba, HH abajo, alineados a la derecha */}
+        <div className="flex flex-col items-end">
+          {leftRows.map(row => (
+            <div key={row} className="mb-2">
+              <div className="text-xs text-gray-600 mb-1 text-right">Fila {row}</div>
+              <div className="flex flex-nowrap gap-1 justify-end">
+                {Array.from({ length: config.rows[row] }, (_, i) => i + 1).map(seat => {
+                  const isResaltado = resaltados.some(r => r.fila === row && r.asiento === seat);
+                  return (
+                    <div key={`${row}-${seat}`} className={getSeatClass(row, seat)}>
+                      <span className={`relative z-10 ${isResaltado ? 'drop-shadow-md' : ''}`}>{seat}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        
+        {/* Contenedor derecho: KK arriba, JJ abajo, alineados a la izquierda */}
+        <div className="flex flex-col items-start">
+          {rightRows.map(row => (
+            <div key={row} className="mb-2">
+              <div className="text-xs text-gray-600 mb-1 text-left">Fila {row}</div>
+              <div className="flex flex-nowrap gap-1 justify-start">
+                {Array.from({ length: config.rows[row] }, (_, i) => i + 1).map(seat => {
+                  const isResaltado = resaltados.some(r => r.fila === row && r.asiento === seat);
+                  return (
+                    <div key={`${row}-${seat}`} className={getSeatClass(row, seat)}>
+                      <span className={`relative z-10 ${isResaltado ? 'drop-shadow-md' : ''}`}>{seat}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
+    );
+  };
+
+  const renderNormalLayout = () => {
+    return (
       <div className="overflow-auto seating-container mx-auto w-full">
         {Object.entries(config.rows).map(([row, count]) => (
           <div key={row} className="mb-2">
@@ -126,6 +164,34 @@ export const AdminSeatMap: React.FC<AdminSeatMapProps> = ({ section, ocupados, r
           </div>
         ))}
       </div>
+    );
+  };
+
+  // Determinar el color de "Disponible" según la sección
+  const getDisponibleColorClass = () => {
+    if (config.color === 'oro') {
+      return 'bg-gradient-to-br from-yellow-400 to-yellow-600 border-yellow-500';
+    } else if (config.color === 'plata') {
+      return 'bg-gradient-to-br from-gray-300 to-gray-500 border-gray-400';
+    } else {
+      return 'bg-gradient-to-br from-amber-500 to-amber-700 border-amber-600';
+    }
+  };
+
+  return (
+    <div className="border rounded-2xl p-4 bg-white shadow-2xl">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-gray-800">Mapa: {config.name}</h3>
+        <div className="flex items-center gap-4 text-sm text-gray-800 font-medium">
+          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-gray-800 rounded mr-2 border border-gray-900/50" />Pagado</span>
+          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-red-500 rounded mr-2 border border-red-600/60" />Reservado</span>
+          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-blue-200 rounded mr-2 border border-blue-400 ring-2 ring-blue-300/60" />Accesible (PCD)</span>
+          <span className="inline-flex items-center"><span className={`w-3.5 h-3.5 inline-block rounded mr-2 border ${getDisponibleColorClass()}`} />Disponible</span>
+          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-green-400 rounded mr-2 border border-green-500/60" />Canje (Mayor)</span>
+          <span className="inline-flex items-center"><span className="w-3.5 h-3.5 inline-block bg-green-500 rounded mr-2 border border-green-600/60" />Canje (Menor)</span>
+        </div>
+      </div>
+      {config.specialLayout ? renderSpecialLayout() : renderNormalLayout()}
     </div>
   );
 };
