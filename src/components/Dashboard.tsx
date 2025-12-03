@@ -15,19 +15,19 @@ interface ReservaAPI {
 }
 import { SeatingSection } from './SeatingSection';
 import { ComprobantePDF } from './ComprobantePDF';
-import { PaymentDateModal } from './PaymentDateModal';
+import { ChangeSeatModal } from './ChangeSeatModal';
 
 export const Dashboard: React.FC = () => {
   const { userData, logout } = useAuth();
   const [selectedSection, setSelectedSection] = useState<number>(0);
   const [showComprobante, setShowComprobante] = useState(false);
   const [comprobanteData, setComprobanteData] = useState<ComprobanteData | null>(null);
-  const [showPaymentModalDelete, setShowPaymentModalDelete] = useState(false);
-  const [asientoAEliminar, setAsientoAEliminar] = useState<AsientoComprobante | null>(null);
+  const [showChangeSeatModal, setShowChangeSeatModal] = useState(false);
+  const [asientoACambiar, setAsientoACambiar] = useState<AsientoComprobante | null>(null);
   const [alumnoNivel, setAlumnoNivel] = useState<number>(1);
   
   // Llamar hooks antes de cualquier return condicional
-  const { eliminarReserva, loading } = useReservas(userData?.alumnoRef || 0);
+  const { cambiarAsiento, loading } = useReservas(userData?.alumnoRef || 0);
   
   // Determinar el nivel del alumno para el modal de fecha de pago
   // Este hook debe estar ANTES del return condicional
@@ -57,59 +57,51 @@ export const Dashboard: React.FC = () => {
   const hermanos = userData.hermanos;
   const alumnoRef = userData.alumnoRef;
 
-  // Función para iniciar el proceso de eliminación (abre el modal)
-  const iniciarEliminacion = (asiento: AsientoComprobante) => {
-    setAsientoAEliminar(asiento);
-    setShowPaymentModalDelete(true);
+  // Función para iniciar el proceso de cambio de asiento
+  const iniciarCambioAsiento = (asiento: AsientoComprobante) => {
+    setAsientoACambiar(asiento);
+    setShowChangeSeatModal(true);
   };
 
-  // Función para confirmar eliminación después de seleccionar fecha
-  const confirmarEliminacionConFecha = async (fechaPago: string) => {
-    if (!asientoAEliminar) return;
+  // Función para confirmar cambio de asiento
+  const confirmarCambioAsiento = async (nuevoAsiento: { fila: string; asiento: number }) => {
+    if (!asientoACambiar) return;
 
     try {
-      const asientoParaEliminar = [{
-        fila: asientoAEliminar.fila,
-        asiento: asientoAEliminar.asiento
-      }];
-      
-      const success = await eliminarReserva(asientoParaEliminar, fechaPago);
+      const success = await cambiarAsiento(
+        { fila: asientoACambiar.fila, asiento: asientoACambiar.asiento },
+        nuevoAsiento,
+        asientoACambiar.precio,
+        asientoACambiar.seccion
+      );
+
       if (success) {
-        // Actualizar el comprobante removiendo el asiento eliminado
+        // Actualizar el comprobante con el nuevo asiento
         if (comprobanteData) {
-          const asientosActualizados = comprobanteData.asientos.filter((a: AsientoComprobante) => 
-            !(a.fila === asientoAEliminar.fila && a.asiento === asientoAEliminar.asiento)
+          const asientosActualizados = comprobanteData.asientos.map((a: AsientoComprobante) => 
+            (a.fila === asientoACambiar.fila && a.asiento === asientoACambiar.asiento)
+              ? { ...a, fila: nuevoAsiento.fila, asiento: nuevoAsiento.asiento }
+              : a
           );
           
-          if (asientosActualizados.length === 0) {
-            // Si no quedan asientos, cerrar el modal
-            setShowComprobante(false);
-            setComprobanteData(null);
-          } else {
-            // Actualizar el total y los asientos
-            const nuevoTotal = asientosActualizados.reduce((sum: number, a: AsientoComprobante) => sum + a.precio, 0);
-            setComprobanteData({
-              ...comprobanteData,
-              asientos: asientosActualizados,
-              total: nuevoTotal
-            });
-          }
+          setComprobanteData({
+            ...comprobanteData,
+            asientos: asientosActualizados
+          });
+
+          // Refrescar los datos del comprobante
+          await verMisBoletos();
         }
       }
       
       // Cerrar el modal
-      setShowPaymentModalDelete(false);
-      setAsientoAEliminar(null);
+      setShowChangeSeatModal(false);
+      setAsientoACambiar(null);
     } catch (error) {
-      console.error('Error al eliminar asiento:', error);
-      setShowPaymentModalDelete(false);
-      setAsientoAEliminar(null);
+      console.error('Error al cambiar asiento:', error);
+      setShowChangeSeatModal(false);
+      setAsientoACambiar(null);
     }
-  };
-
-  // Función anterior (mantener para compatibilidad, pero ahora llama a iniciarEliminacion)
-  const eliminarAsientoIndividual = (asiento: AsientoComprobante) => {
-    iniciarEliminacion(asiento);
   };
 
   // La función de debug de hermanos se ha eliminado para limpiar el código.
@@ -226,7 +218,7 @@ export const Dashboard: React.FC = () => {
 
   // Validar fechas cuando se selecciona una sección
   // El sistema se cierra a las 13:00 (1 PM) del último día de venta para cada nivel
-  // Los usuarios pueden eliminar asientos pero no pueden reservar nuevos después del cierre
+  // Los usuarios pueden cambiar asientos pero no pueden reservar nuevos después del cierre
   // Los usuarios internos nunca están bloqueados por fechas
   // Usa hora de Monterrey para todas las comparaciones
   const validateDates = () => {
@@ -288,7 +280,7 @@ export const Dashboard: React.FC = () => {
       const yaCerro = isAfterClosingTime(fechaCierreFuncion1);
       console.log(`🔍 Dashboard validateDates - Función 1: fechaCierre=${fechaCierreFuncion1}, yaCerro=${yaCerro}`);
       if (yaCerro) {
-        alert("Las reservas de boletos para la 1ra Función ya han concluido. El período de venta terminó el 2 de diciembre a la 1:00 PM. Aún puedes eliminar asientos si lo necesitas.");
+        alert("Las reservas de boletos para la 1ra Función ya han concluido. El período de venta terminó el 2 de diciembre a la 1:00 PM. Aún puedes cambiar asientos si lo necesitas.");
         return false;
       }
     } else if (levelClose === 2) {
@@ -297,7 +289,7 @@ export const Dashboard: React.FC = () => {
       const yaCerro = isAfterClosingTime(fechaCierreFuncion2);
       console.log(`🔍 Dashboard validateDates - Función 2: fechaCierre=${fechaCierreFuncion2}, yaCerro=${yaCerro}`);
       if (yaCerro) {
-        alert("Las reservas de boletos para la 2da Función ya han concluido. El período de venta terminó el 5 de diciembre a la 1:00 PM. Aún puedes eliminar asientos si lo necesitas.");
+        alert("Las reservas de boletos para la 2da Función ya han concluido. El período de venta terminó el 5 de diciembre a la 1:00 PM. Aún puedes cambiar asientos si lo necesitas.");
         return false;
       }
     } else if (levelClose === 3) {
@@ -306,7 +298,7 @@ export const Dashboard: React.FC = () => {
       const yaCerro = isAfterClosingTime(fechaCierreFuncion3);
       console.log(`🔍 Dashboard validateDates - Función 3: fechaCierre=${fechaCierreFuncion3}, yaCerro=${yaCerro}`);
       if (yaCerro) {
-        alert("Las reservas de boletos para la 3ra Función ya han concluido. El período de venta terminó el 9 de diciembre a la 1:00 PM. Aún puedes eliminar asientos si lo necesitas.");
+        alert("Las reservas de boletos para la 3ra Función ya han concluido. El período de venta terminó el 9 de diciembre a la 1:00 PM. Aún puedes cambiar asientos si lo necesitas.");
         return false;
       }
     } else {
@@ -713,25 +705,31 @@ export const Dashboard: React.FC = () => {
             setShowComprobante(false);
             setComprobanteData(null);
           }}
-          onEliminarAsiento={eliminarAsientoIndividual}
+          onCambiarAsiento={iniciarCambioAsiento}
           loading={loading}
         />
       )}
 
-      {/* Modal de Fecha de Pago para Eliminación */}
-      {showPaymentModalDelete && (
-        <PaymentDateModal
-          isOpen={showPaymentModalDelete}
+      {/* Modal de Cambio de Asiento */}
+      {showChangeSeatModal && asientoACambiar && (
+        <ChangeSeatModal
+          isOpen={showChangeSeatModal}
           onClose={() => {
-            setShowPaymentModalDelete(false);
-            setAsientoAEliminar(null);
+            setShowChangeSeatModal(false);
+            setAsientoACambiar(null);
           }}
-          onConfirm={confirmarEliminacionConFecha}
-          nivel={alumnoNivel}
-          familiaNumber={alumnoRef % 100} // Usar módulo 100 del control como número de familia aproximado
+          onConfirm={confirmarCambioAsiento}
+          currentSeat={{
+            fila: asientoACambiar.fila,
+            asiento: asientoACambiar.asiento,
+            seccion: asientoACambiar.seccion,
+            precio: asientoACambiar.precio
+          }}
           alumnoRef={alumnoRef}
+          alumnoNombre={userData.alumnoNombre}
         />
       )}
+
     </div>
   );
 };

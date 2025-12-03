@@ -54,33 +54,38 @@ export async function POST(req: NextRequest) {
     const funcionesValidas = [2, 3];
 
     // Traer TODAS las reservas del hermano menor (sin filtrar por función) para calcular el precio total
+    // Incluir tanto reservadas como pagadas para calcular el precio correctamente
     const { data: reservasMenorTodas, error: errMenorTodas } = await supabase
       .from('reservas')
       .select('id, referencia, fila, asiento, nivel, precio, estado, fecha_pago')
       .eq('referencia', controlMenor)
-      .eq('estado', 'reservado');
+      .in('estado', ['reservado', 'pagado']);
 
     if (errMenorTodas) {
       return NextResponse.json({ success: false, message: 'Error cargando reservas menor', detail: errMenorTodas.message }, { status: 500 });
     }
 
     // Traer TODAS las reservas del hermano mayor (sin filtrar por función) para calcular el precio total
+    // Incluir tanto reservadas como pagadas para calcular el precio correctamente
     const { data: reservasMayorTodas, error: errMayorTodas } = await supabase
       .from('reservas')
       .select('id, referencia, fila, asiento, nivel, precio, estado, fecha_pago')
       .eq('referencia', controlMayor)
-      .eq('estado', 'reservado');
+      .in('estado', ['reservado', 'pagado']);
 
     if (errMayorTodas) {
       return NextResponse.json({ success: false, message: 'Error cargando reservas mayor', detail: errMayorTodas.message }, { status: 500 });
     }
 
     // Filtrar solo las reservas de funciones 2 y 3 del hermano mayor para el canje
-    const reservasMayorCanje = (reservasMayorTodas || []).filter(r => funcionesValidas.includes(r.nivel));
+    // Solo considerar reservas en estado 'reservado' para el canje, aunque el cálculo del total incluya todas
+    const reservasMayorCanje = (reservasMayorTodas || []).filter(r => 
+      funcionesValidas.includes(r.nivel) && r.estado === 'reservado'
+    );
 
-    // Verificar que el hermano mayor tenga al menos una reserva en función 2 o 3 para permitir el canje
+    // Verificar que el hermano mayor tenga al menos una reserva en función 2 o 3 (reservada) para permitir el canje
     if (!reservasMayorCanje || reservasMayorCanje.length === 0) {
-      return NextResponse.json({ success: false, message: 'El hermano mayor no tiene reservas aplicables (función 2 o 3).' }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'El hermano mayor no tiene reservas aplicables (función 2 o 3) en estado reservado para realizar el canje.' }, { status: 400 });
     }
 
     // VALIDACIÓN: Verificar que la fecha de pago coincida con el día actual (solo si se va a realizar el canje)

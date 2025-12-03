@@ -156,6 +156,50 @@ export const useReservas = (alumnoRef: number) => {
     }
   };
 
+  const cambiarAsiento = async (
+    asientoActual: Asiento,
+    asientoNuevo: Asiento,
+    precio: number,
+    zona: string
+  ): Promise<boolean> => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/reservas/cambiar-asiento', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          asiento_actual: asientoActual,
+          asiento_nuevo: asientoNuevo,
+          alumno_ref: alumnoRef,
+          precio,
+          zona,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Actualizar datos después del cambio
+        await fetchAsientosDisponibles();
+        await fetchReservas();
+        await fetchPagos();
+        alert(result.message || 'Asiento cambiado exitosamente');
+        return true;
+      } else {
+        alert(result.message || 'Error al cambiar el asiento');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error al cambiar asiento:', error);
+      alert('Error de conexión');
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (alumnoRef) {
       fetchAsientosDisponibles();
@@ -171,6 +215,7 @@ export const useReservas = (alumnoRef: number) => {
     loading,
     crearReserva,
     eliminarReserva,
+    cambiarAsiento,
     refetch: () => {
       fetchAsientosDisponibles();
       fetchReservas();

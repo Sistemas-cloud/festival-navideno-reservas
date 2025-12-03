@@ -9,10 +9,11 @@ interface ComprobantePDFProps {
   data: ComprobanteData;
   onClose: () => void;
   onEliminarAsiento?: (asiento: AsientoComprobante) => void;
+  onCambiarAsiento?: (asiento: AsientoComprobante) => void;
   loading?: boolean;
 }
 
-export const ComprobantePDF: React.FC<ComprobantePDFProps> = ({ data, onClose, onEliminarAsiento, loading = false }) => {
+export const ComprobantePDF: React.FC<ComprobantePDFProps> = ({ data, onClose, onEliminarAsiento, onCambiarAsiento, loading = false }) => {
   const comprobanteRef = useRef<HTMLDivElement>(null);
 
   const generarPDF = async () => {
@@ -282,7 +283,19 @@ export const ComprobantePDF: React.FC<ComprobantePDFProps> = ({ data, onClose, o
                       <div className="text-right">
                         <p className="text-lg font-bold text-blue-600">${asiento.precio}</p>
                       </div>
-                      {onEliminarAsiento && (
+                      {onCambiarAsiento && (
+                        <button
+                          onClick={() => {
+                            onCambiarAsiento(asiento);
+                          }}
+                          disabled={loading}
+                          className="px-3 py-1 bg-blue-500 text-white text-xs font-semibold rounded hover:bg-blue-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Cambiar este asiento por otro disponible"
+                        >
+                          {loading ? '...' : '🔄'}
+                        </button>
+                      )}
+                      {!onCambiarAsiento && onEliminarAsiento && (
                         <button
                           onClick={() => {
                             const confirmar = window.confirm(

@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
     if (validacionCierre.cerrado) {
       return NextResponse.json({
         success: false,
-        message: validacionCierre.mensaje || 'El período de reservas ha concluido. Aún puedes eliminar asientos si lo necesitas.'
+        message: validacionCierre.mensaje || 'El período de reservas ha concluido. Aún puedes cambiar asientos si lo necesitas.'
       }, { status: 403 });
     }
 

@@ -202,17 +202,22 @@ export default function AdminPage() {
               const d = await r.json();
               if (r.ok && d.success) {
                 const todasReservas = (d.data || []) as ReservaPorControl[];
-                const reservasPendientes = todasReservas.filter((x: ReservaPorControl) => x.estado === 'reservado');
-                const total = reservasPendientes.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
-                const reservaConFecha = reservasPendientes.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
+                // Incluir tanto reservadas como pagadas para mostrar todos los boletos
+                const todasReservasVisibles = todasReservas.filter((x: ReservaPorControl) => 
+                  x.estado === 'reservado' || x.estado === 'pagado'
+                );
+                // Calcular total incluyendo todas las reservas (reservadas y pagadas)
+                const total = todasReservasVisibles.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
+                // Buscar fecha de pago en cualquier reserva (reservada o pagada)
+                const reservaConFecha = todasReservasVisibles.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
                 
-                // Guardar boletos y fecha de pago según el control
+                // Guardar boletos y fecha de pago según el control (incluyendo pagados)
                 if (entry.id === controlMenor) {
-                  setBoletosMenor(reservasPendientes);
+                  setBoletosMenor(todasReservasVisibles);
                   setFechaPagoMenor(reservaConFecha?.fecha_pago || null);
                   setTotalMenor(total);
                 } else if (entry.id === controlMayor) {
-                  setBoletosMayor(reservasPendientes);
+                  setBoletosMayor(todasReservasVisibles);
                   setFechaPagoMayor(reservaConFecha?.fecha_pago || null);
                   setTotalMayor(total);
                 }
@@ -436,11 +441,14 @@ export default function AdminPage() {
                                 const data = await res.json();
                                 if (res.ok && data.success) {
                                   const reservas = (data.data || []) as ReservaPorControl[];
-                                  const reservasPendientes = reservas.filter((r: ReservaPorControl) => r.estado === 'reservado');
-                                  const total = reservasPendientes.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
-                                  setBoletosMenor(reservasPendientes);
+                                  // Incluir tanto reservadas como pagadas para mostrar todos los boletos
+                                  const todasReservas = reservas.filter((r: ReservaPorControl) => 
+                                    r.estado === 'reservado' || r.estado === 'pagado'
+                                  );
+                                  const total = todasReservas.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
+                                  setBoletosMenor(todasReservas);
                                   setTotalMenor(total);
-                                  const reservaConFecha = reservasPendientes.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
+                                  const reservaConFecha = todasReservas.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
                                   setFechaPagoMenor(reservaConFecha?.fecha_pago || null);
                                 } else {
                                   setError('No se encontraron reservas para el control menor');
@@ -488,11 +496,14 @@ export default function AdminPage() {
                                 const data = await res.json();
                                 if (res.ok && data.success) {
                                   const reservas = (data.data || []) as ReservaPorControl[];
-                                  const reservasPendientes = reservas.filter((r: ReservaPorControl) => r.estado === 'reservado');
-                                  const total = reservasPendientes.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
-                                  setBoletosMayor(reservasPendientes);
+                                  // Incluir tanto reservadas como pagadas para mostrar todos los boletos
+                                  const todasReservas = reservas.filter((r: ReservaPorControl) => 
+                                    r.estado === 'reservado' || r.estado === 'pagado'
+                                  );
+                                  const total = todasReservas.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
+                                  setBoletosMayor(todasReservas);
                                   setTotalMayor(total);
-                                  const reservaConFecha = reservasPendientes.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
+                                  const reservaConFecha = todasReservas.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
                                   setFechaPagoMayor(reservaConFecha?.fecha_pago || null);
                                 } else {
                                   setError('No se encontraron reservas para el control mayor');

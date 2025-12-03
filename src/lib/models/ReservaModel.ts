@@ -681,6 +681,185 @@ export class ReservaModel {
     }
   }
 
+  async cambiarAsiento(
+    asientoActual: {fila: string, asiento: number},
+    asientoNuevo: {fila: string, asiento: number},
+    alumnoRef: number,
+    precio: number,
+    zona: string
+  ): Promise<{success: boolean, message?: string}> {
+    const supabase = getSupabaseClient();
+    
+    try {
+      const esInterno = isInternalUser(alumnoRef);
+      let nivel: number;
+
+      if (esInterno) {
+        const internalUser = findInternalUser(alumnoRef);
+        if (!internalUser) {
+          return { success: false, message: 'Error: Usuario interno no encontrado.' };
+        }
+        nivel = internalUser.funcion;
+        console.log(`🔐 cambiarAsiento - Usuario interno detectado: ${internalUser.nombre}, función: ${nivel}`);
+      } else {
+        nivel = await this.getNivelAlumno(alumnoRef);
+      }
+      
+      console.log(`🔄 Iniciando cambio de asiento: ${asientoActual.fila}${asientoActual.asiento} → ${asientoNuevo.fila}${asientoNuevo.asiento} para alumno ${alumnoRef}`);
+      
+      // PASO 1: Verificar que el asiento actual pertenece al alumno y está reservado (no pagado)
+      const { data: reservaActual, error: checkError } = await supabase
+        .from('reservas')
+        .select('id, estado, referencia, nivel, fecha_pago, precio, zona')
+        .eq('fila', asientoActual.fila)
+        .eq('asiento', asientoActual.asiento)
+        .eq('nivel', nivel)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error al verificar reserva actual:', checkError);
+        return { success: false, message: 'Error al verificar la reserva actual.' };
+      }
+
+      if (!reservaActual) {
+        return { 
+          success: false, 
+          message: `El asiento ${asientoActual.fila}${asientoActual.asiento} no tiene una reserva activa.` 
+        };
+      }
+
+      if (reservaActual.estado === 'pagado') {
+        return { 
+          success: false, 
+          message: `El asiento ${asientoActual.fila}${asientoActual.asiento} ya está pagado y no se puede cambiar.` 
+        };
+      }
+
+      if (!esInterno && reservaActual.referencia !== alumnoRef) {
+        return { 
+          success: false, 
+          message: `El asiento ${asientoActual.fila}${asientoActual.asiento} no pertenece a tu reserva.` 
+        };
+      }
+
+      // Usar la fecha de pago de la reserva actual
+      const fechaPago = reservaActual.fecha_pago;
+
+      // PASO 2: Verificar que el nuevo asiento esté disponible
+      const { data: asientoOcupado, error: disponibilidadError } = await supabase
+        .from('reservas')
+        .select('fila, asiento, estado, nivel, referencia')
+        .eq('fila', asientoNuevo.fila)
+        .eq('asiento', asientoNuevo.asiento)
+        .eq('nivel', nivel)
+        .in('estado', ['reservado', 'pagado'])
+        .maybeSingle();
+
+      if (disponibilidadError && disponibilidadError.code !== 'PGRST116') {
+        console.error('Error al verificar disponibilidad del nuevo asiento:', disponibilidadError);
+        return { success: false, message: 'Error al verificar disponibilidad del nuevo asiento.' };
+      }
+
+      if (asientoOcupado) {
+        const estadoTexto = asientoOcupado.estado === 'reservado' ? 'reservado' : 'pagado';
+        return { 
+          success: false, 
+          message: `El asiento ${asientoNuevo.fila}${asientoNuevo.asiento} ya está ${estadoTexto}.` 
+        };
+      }
+
+      // PASO 3: Eliminar el asiento actual
+      const { error: deleteError } = await supabase
+        .from('reservas')
+        .delete()
+        .eq('id', reservaActual.id);
+
+      if (deleteError) {
+        console.error('❌ Error al eliminar reserva actual:', deleteError);
+        return { success: false, message: 'Error al eliminar el asiento actual.' };
+      }
+
+      console.log(`✅ Asiento actual ${asientoActual.fila}${asientoActual.asiento} eliminado exitosamente`);
+
+      // PASO 4: Crear la nueva reserva con los mismos datos (misma fecha de pago)
+      const nuevaReservaData = {
+        fila: asientoNuevo.fila,
+        asiento: asientoNuevo.asiento,
+        estado: 'reservado' as const,
+        referencia: alumnoRef,
+        nivel: nivel,
+        fecha_pago: fechaPago,
+        precio: precio || reservaActual.precio,
+        zona: zona || reservaActual.zona
+      };
+
+      const { error: insertError } = await supabase
+        .from('reservas')
+        .insert(nuevaReservaData);
+
+      if (insertError) {
+        console.error('❌ Error al crear nueva reserva:', insertError);
+        // Intentar revertir: recrear la reserva original
+        const { error: revertError } = await supabase
+          .from('reservas')
+          .insert({
+            fila: reservaActual.fila || asientoActual.fila,
+            asiento: reservaActual.asiento || asientoActual.asiento,
+            estado: 'reservado' as const,
+            referencia: alumnoRef,
+            nivel: nivel,
+            fecha_pago: fechaPago,
+            precio: reservaActual.precio,
+            zona: reservaActual.zona
+          });
+
+        if (revertError) {
+          console.error('❌ Error crítico: No se pudo revertir el cambio. Contacte al administrador.');
+        }
+
+        return { success: false, message: 'Error al crear el nuevo asiento. Se ha revertido el cambio.' };
+      }
+
+      console.log(`✅ Nuevo asiento ${asientoNuevo.fila}${asientoNuevo.asiento} creado exitosamente`);
+
+      // PASO 5: Actualizar fecha de pago de todas las reservas restantes del alumno (por consistencia)
+      const { data: reservasRestantes, error: reservasError } = await supabase
+        .from('reservas')
+        .select('id')
+        .eq('referencia', alumnoRef)
+        .eq('nivel', nivel)
+        .eq('estado', 'reservado');
+
+      if (!reservasError && reservasRestantes && reservasRestantes.length > 0) {
+        const idsReservasRestantes = reservasRestantes.map(r => r.id);
+        const { error: updateError } = await supabase
+          .from('reservas')
+          .update({ fecha_pago: fechaPago })
+          .in('id', idsReservasRestantes)
+          .eq('referencia', alumnoRef)
+          .eq('nivel', nivel)
+          .eq('estado', 'reservado');
+
+        if (updateError) {
+          console.error('⚠️ Error al actualizar fecha de pago de reservas restantes (no crítico):', updateError);
+          // No es crítico, solo un warning
+        } else {
+          console.log(`✅ Fecha de pago actualizada para ${reservasRestantes.length} reservas restantes`);
+        }
+      }
+
+      console.log(`🎉 Cambio de asiento completado exitosamente: ${asientoActual.fila}${asientoActual.asiento} → ${asientoNuevo.fila}${asientoNuevo.asiento}`);
+      return { 
+        success: true, 
+        message: `Asiento cambiado exitosamente de ${asientoActual.fila}${asientoActual.asiento} a ${asientoNuevo.fila}${asientoNuevo.asiento}.` 
+      };
+
+    } catch (error) {
+      console.error('❌ Error en proceso de cambio de asiento:', error);
+      return { success: false, message: 'Error interno del servidor.' };
+    }
+  }
+
   /**
    * Calcula la función (1, 2 o 3) basada en el nivel y grado del alumno
    * Reglas:
@@ -972,7 +1151,7 @@ export class ReservaModel {
           console.log(`🚫 isPortalCerrado - Portal CERRADO para ${nombreFuncion} (alumno ${alumnoRef})`);
           return {
             cerrado: true,
-            mensaje: `Las reservas de boletos para la ${nombreFuncion} cerraron el ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM. El portal se reabrirá el ${fechaReaperturaDate.toLocaleDateString('es-MX')} a medianoche. Aún puedes eliminar asientos si lo necesitas.`
+            mensaje: `Las reservas de boletos para la ${nombreFuncion} cerraron el ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM. El portal se reabrirá el ${fechaReaperturaDate.toLocaleDateString('es-MX')} a medianoche. Aún puedes cambiar asientos si lo necesitas.`
           };
         }
       }

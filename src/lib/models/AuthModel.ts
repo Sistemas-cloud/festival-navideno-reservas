@@ -298,7 +298,7 @@ export class AuthModel {
       
       if (isAfterClosingTime(fechaCierreStr)) {
         console.log(`✅ Sistema de reservas: CERRADO para ${nombreFuncion} (nivel ${nivel}, grado ${grado}) - cerró a las 13:00 del ${fechaCierre.toLocaleDateString('es-MX')}`);
-        console.log(`ℹ️  Los usuarios pueden eliminar asientos pero no pueden reservar nuevos.`);
+        console.log(`ℹ️  Los usuarios pueden cambiar asientos pero no pueden reservar nuevos.`);
       } else {
         console.log(`⏰ Sistema de reservas: ABIERTO para ${nombreFuncion} (nivel ${nivel}, grado ${grado})`);
         console.log(`📅 Fecha de cierre: ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM`);
