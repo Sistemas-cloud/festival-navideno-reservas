@@ -51,6 +51,15 @@ async function validateReservationAccess(alumnoRef: number): Promise<{
     funcionNum = 3;
   }
 
+  // Verificar si estamos en período de reapertura
+  const reservaModel = new ReservaModel();
+  const enReapertura = await reservaModel.isReopeningPeriod(funcionNum);
+  
+  if (enReapertura) {
+    console.log(`🔄 Validación de acceso: Usuario ${alumnoRef} está en período de reapertura para función ${funcionNum} - acceso permitido`);
+    return { hasAccess: true };
+  }
+
   // IMPORTANTE: La función 1 NO tiene restricción de fecha - siempre está abierta
   // Las funciones 2 y 3 mantienen sus restricciones de fecha
   if (funcionNum === 1) {
@@ -79,8 +88,7 @@ async function validateReservationAccess(alumnoRef: number): Promise<{
     
     // Formatear fecha de apertura para el mensaje
     const [year, month, day] = fechaAperturaStr.split('-').map(Number);
-    const fechaApertura = new Date(year, month - 1, day);
-    const fechaAperturaFormateada = fechaApertura.toLocaleDateString('es-MX', {
+    const fechaAperturaFormateada = new Date(year, month - 1, day).toLocaleDateString('es-MX', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

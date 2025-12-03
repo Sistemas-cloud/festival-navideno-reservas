@@ -1,7 +1,7 @@
 import { getSupabaseClient, Reserva } from '../supabase';
 import { isInternalUser, findInternalUser } from '../config/internalUsers';
 import { formatPaymentDate } from '../utils/paymentDates';
-import { getTodayInMonterrey, parseDateString, isAfterClosingTime } from '../utils/timezone';
+import { getTodayInMonterrey, parseDateString, isAfterClosingTime, isDateReached } from '../utils/timezone';
 
 export class ReservaModel {
   
@@ -36,7 +36,16 @@ export class ReservaModel {
       // Función del alumno (1, 2 o 3) según reglas unificadas
       const funcion = await this.getNivelAlumno(alumnoRef);
 
-      // Determinar cantidad de boletos permitidos por familia
+      // Verificar si estamos en período de reapertura
+      const enReapertura = await this.isReopeningPeriod(funcion);
+      
+      // Durante la reapertura, no hay límite de boletos por familia
+      if (enReapertura) {
+        console.log(`🔄 Período de reapertura detectado para función ${funcion} - Sin límite de boletos por familia`);
+        return { asientos: 9999 }; // Prácticamente ilimitado
+      }
+
+      // Determinar cantidad de boletos permitidos por familia (solo fuera de reapertura)
       let boletosPorFamilia = 0;
       
       // Límites por función (no por nivel educativo)
@@ -273,6 +282,10 @@ export class ReservaModel {
 
       console.log(`✅ Validación de duplicidad exitosa para ${asientos.length} asientos del alumno ${alumnoRef}`);
       
+      // Verificar si estamos en período de reapertura
+      const funcion = nivel; // nivel ya es la función para reservas
+      const enReapertura = await this.isReopeningPeriod(funcion);
+      
       // Usar la fecha de pago proporcionada o calcular una por defecto
       console.log('🔍 crearReserva - fechaPago recibida:', fechaPago);
       console.log('🔍 crearReserva - tipo de fechaPago:', typeof fechaPago);
@@ -282,7 +295,12 @@ export class ReservaModel {
       
       // Validar que fechaPago sea una cadena válida y no vacía
       let fechaFormateada: string;
-      if (fechaPago && typeof fechaPago === 'string' && fechaPago.trim() !== '') {
+      if (enReapertura) {
+        // Durante la reapertura, usar fecha fija automáticamente
+        const { getReopeningPaymentDateForFunction } = await import('../config/reopeningPaymentDates');
+        fechaFormateada = getReopeningPaymentDateForFunction(funcion);
+        console.log(`🔄 crearReserva - Período de reapertura: Usando fecha fija ${fechaFormateada}`);
+      } else if (fechaPago && typeof fechaPago === 'string' && fechaPago.trim() !== '') {
         fechaFormateada = fechaPago.trim();
         console.log('✅ crearReserva - Usando fecha de pago proporcionada:', fechaFormateada);
       } else {
@@ -292,7 +310,8 @@ export class ReservaModel {
 
       // VALIDACIÓN DE LÍMITE DE FAMILIAS POR FECHA DE PAGO
       // IMPORTANTE: Solo la fecha1 (primer día) tiene límite. La fecha2 (segundo día) siempre está disponible.
-      if (!isInternal) { // Los usuarios internos no tienen restricción de límite
+      // Durante la reapertura, no hay límites de familias por fecha de pago
+      if (!isInternal && !enReapertura) { // Los usuarios internos y reapertura no tienen restricción de límite
         const { getPaymentLimitsForFunction } = await import('../config/paymentLimits');
         const limits = getPaymentLimitsForFunction(nivel);
         
@@ -807,6 +826,25 @@ export class ReservaModel {
    */
   async getPaymentDateAvailability(funcion: number): Promise<Array<{fecha: string, disponibles: number, limite: number, llena: boolean}>> {
     try {
+      // Verificar si estamos en período de reapertura
+      const enReapertura = await this.isReopeningPeriod(funcion);
+      
+      if (enReapertura) {
+        // Durante la reapertura, usar fecha de pago fija
+        const { getReopeningPaymentDateForFunction } = await import('../config/reopeningPaymentDates');
+        const fechaPagoFija = getReopeningPaymentDateForFunction(funcion);
+        
+        console.log(`🔄 Período de reapertura - Función ${funcion}: Fecha de pago fija ${fechaPagoFija}`);
+        
+        return [{
+          fecha: fechaPagoFija,
+          disponibles: 9999, // Sin límite
+          limite: 0, // 0 indica sin límite
+          llena: false // Nunca está llena
+        }];
+      }
+      
+      // Fuera de reapertura, usar el sistema anterior con dos fechas
       const { getPaymentLimitsForFunction } = await import('../config/paymentLimits');
       const limits = getPaymentLimitsForFunction(funcion);
       
@@ -905,17 +943,38 @@ export class ReservaModel {
 
       console.log(`🔍 isPortalCerrado - Alumno ${alumnoRef}: función=${funcion} (${nombreFuncion}), fechaCierre=${fechaCierreStr}`);
       
+      // Verificar si estamos en período de reapertura
+      const enReapertura = await this.isReopeningPeriod(funcion);
+      
+      if (enReapertura) {
+        console.log(`🔄 isPortalCerrado - Portal ABIERTO en período de reapertura para ${nombreFuncion} (alumno ${alumnoRef})`);
+        return { cerrado: false };
+      }
+      
       // Verificar si ya pasó la hora de cierre (13:00 del día indicado)
       const yaCerro = isAfterClosingTime(fechaCierreStr);
       console.log(`🔍 isPortalCerrado - Verificación de cierre para ${nombreFuncion}: fechaCierre=${fechaCierreStr}, yaCerro=${yaCerro}`);
       
       if (yaCerro) {
-        const fechaCierre = parseDateString(fechaCierreStr);
-        console.log(`🚫 isPortalCerrado - Portal CERRADO para ${nombreFuncion} (alumno ${alumnoRef})`);
-        return {
-          cerrado: true,
-          mensaje: `Las reservas de boletos para la ${nombreFuncion} ya han concluido. El período de venta terminó el ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM. Aún puedes eliminar asientos si lo necesitas.`
-        };
+        // Verificar si ya debería haber reabierto
+        const { getReopeningDateForFunction } = await import('../config/earlyAccess');
+        const { isDateReached } = await import('../utils/timezone');
+        const fechaReapertura = getReopeningDateForFunction(funcion);
+        const yaReabrio = isDateReached(fechaReapertura);
+        
+        if (yaReabrio) {
+          // Debería estar abierto pero no está en reapertura, algo está mal
+          console.log(`⚠️ isPortalCerrado - Ya debería haber reabierto pero no está en período de reapertura`);
+        } else {
+          // Está cerrado y aún no ha reabierto
+          const fechaCierre = parseDateString(fechaCierreStr);
+          const fechaReaperturaDate = parseDateString(fechaReapertura);
+          console.log(`🚫 isPortalCerrado - Portal CERRADO para ${nombreFuncion} (alumno ${alumnoRef})`);
+          return {
+            cerrado: true,
+            mensaje: `Las reservas de boletos para la ${nombreFuncion} cerraron el ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM. El portal se reabrirá el ${fechaReaperturaDate.toLocaleDateString('es-MX')} a medianoche. Aún puedes eliminar asientos si lo necesitas.`
+          };
+        }
       }
 
       console.log(`✅ isPortalCerrado - Portal ABIERTO para ${nombreFuncion} (alumno ${alumnoRef})`);
@@ -924,6 +983,36 @@ export class ReservaModel {
     } catch (error) {
       console.error('Error al validar cierre del portal:', error);
       return { cerrado: false }; // Por defecto permitir si hay error
+    }
+  }
+
+  /**
+   * Verifica si estamos en período de reapertura para una función específica
+   * El período de reapertura comienza después del cierre anterior (a las 13:00) 
+   * y cuando llega la fecha de reapertura (a medianoche)
+   */
+  async isReopeningPeriod(funcion: number): Promise<boolean> {
+    try {
+      const { getPreviousClosingDateForFunction, getReopeningDateForFunction } = await import('../config/earlyAccess');
+      const { isAfterClosingTime, isDateReached } = await import('../utils/timezone');
+      
+      const fechaCierreAnterior = getPreviousClosingDateForFunction(funcion);
+      const fechaReapertura = getReopeningDateForFunction(funcion);
+      
+      // Estamos en reapertura si:
+      // 1. Ya pasó el cierre anterior (a las 13:00 del día de cierre)
+      // 2. Y ya llegó o pasó la fecha de reapertura (a medianoche)
+      const yaCerro = isAfterClosingTime(fechaCierreAnterior);
+      const yaReabrio = isDateReached(fechaReapertura);
+      
+      const enReapertura = yaCerro && yaReabrio;
+      
+      console.log(`🔍 isReopeningPeriod - Función ${funcion}: fechaCierreAnterior=${fechaCierreAnterior}, fechaReapertura=${fechaReapertura}, yaCerro=${yaCerro}, yaReabrio=${yaReabrio}, enReapertura=${enReapertura}`);
+      
+      return enReapertura;
+    } catch (error) {
+      console.error('Error al verificar período de reapertura:', error);
+      return false; // Por defecto, no estamos en reapertura si hay error
     }
   }
 }

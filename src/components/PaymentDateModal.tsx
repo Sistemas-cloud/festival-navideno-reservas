@@ -82,7 +82,13 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
           if (data.success && data.disponibilidad) {
             // Usar solo las fechas que vienen de la API (ya están filtradas por función correcta)
             setDateAvailability(data.disponibilidad);
-            // NO seleccionar automáticamente - el usuario debe elegir
+            
+            // Si solo hay una fecha disponible y tiene limite === 0, estamos en reapertura
+            // En este caso, seleccionar automáticamente la fecha fija
+            if (data.disponibilidad.length === 1 && data.disponibilidad[0].limite === 0) {
+              setSelectedDate(data.disponibilidad[0].fecha);
+              console.log('🔄 Período de reapertura detectado - Fecha fija seleccionada automáticamente:', data.disponibilidad[0].fecha);
+            }
           } else {
             console.error('Error al obtener disponibilidad de fechas:', data.message);
             // Si hay error, no establecer fechas - el modal mostrará mensaje de error
@@ -119,11 +125,15 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
       <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
         <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
           <span className="mr-2">📅</span>
-          Selecciona Día de Pago
+          {dateAvailability.length === 1 && dateAvailability[0].limite === 0 
+            ? 'Fecha de Pago Asignada' 
+            : 'Selecciona Día de Pago'}
         </h2>
         
         <p className="text-gray-600 mb-6">
-          Por favor selecciona el día en que realizarás el pago de tus boletos.
+          {dateAvailability.length === 1 && dateAvailability[0].limite === 0
+            ? 'Durante el período de reapertura, la fecha de pago es fija y no se puede cambiar.'
+            : 'Por favor selecciona el día en que realizarás el pago de tus boletos.'}
         </p>
 
         <div className="space-y-3 mb-6">
@@ -141,39 +151,33 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
           ) : (
             dateAvailability.map((disponibilidad) => {
               const fecha = disponibilidad.fecha;
+              // Detectar si es período de reapertura: solo una fecha y limite === 0
+              const esReapertura = dateAvailability.length === 1 && disponibilidad.limite === 0;
               // La segunda fecha (fecha2) siempre está disponible - se identifica porque limite === 0
               // La fecha1 siempre tiene un límite > 0
-              const esFecha2 = disponibilidad.limite === 0;
+              const esFecha2 = disponibilidad.limite === 0 && !esReapertura;
               
               // Verificar si la fecha ya pasó (solo para fecha1, fecha2 siempre disponible)
-              const fechaYaPaso = !esFecha2 && isDatePassed(fecha);
+              const fechaYaPaso = !esFecha2 && !esReapertura && isDatePassed(fecha);
               
               const llena = disponibilidad.llena ?? false;
               const disponibles = disponibilidad.disponibles ?? 0;
               const limite = disponibilidad.limite ?? 0;
-              const deshabilitada = llena || fechaYaPaso;
+              const deshabilitada = (!esReapertura && (llena || fechaYaPaso));
               
-              console.log(`🔍 Modal - Fecha ${fecha}: esFecha2=${esFecha2}, llena=${llena}, fechaYaPaso=${fechaYaPaso}, deshabilitada=${deshabilitada}`);
+              console.log(`🔍 Modal - Fecha ${fecha}: esReapertura=${esReapertura}, esFecha2=${esFecha2}, llena=${llena}, fechaYaPaso=${fechaYaPaso}, deshabilitada=${deshabilitada}`);
               
               return (
-                <button
+                <div
                   key={fecha}
-                  onClick={() => {
-                    if (!deshabilitada) {
-                      setSelectedDate(fecha);
-                    } else if (fechaYaPaso) {
-                      alert(`La fecha ${formatPaymentDate(fecha)} ya pasó. Por favor, selecciona la otra fecha disponible.`);
-                    } else {
-                      alert(`La fecha ${formatPaymentDate(fecha)} ya ha alcanzado su límite máximo de ${limite} familias. Por favor, selecciona la otra fecha disponible.`);
-                    }
-                  }}
-                  disabled={deshabilitada}
                   className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
-                    deshabilitada
+                    esReapertura
+                      ? 'border-blue-500 bg-blue-50 shadow-lg cursor-default'
+                      : deshabilitada
                       ? 'border-red-300 bg-red-50 cursor-not-allowed opacity-60'
                       : selectedDate === fecha
                       ? 'border-blue-500 bg-blue-50 shadow-lg'
-                      : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                      : 'border-gray-200'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -181,7 +185,11 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
                       <p className={`font-semibold ${deshabilitada ? 'text-gray-500' : 'text-gray-800'}`}>
                         {formatPaymentDate(fecha)}
                       </p>
-                      {esFecha2 ? (
+                      {esReapertura ? (
+                        <p className="text-xs mt-1 text-blue-600 font-semibold">
+                          🔒 Fecha fija asignada (no se puede cambiar)
+                        </p>
+                      ) : esFecha2 ? (
                         <p className="text-xs mt-1 text-green-600 font-semibold">
                           ✅ Siempre disponible
                         </p>
@@ -200,11 +208,14 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
                     {selectedDate === fecha && !deshabilitada && (
                       <span className="text-blue-500 text-2xl">✓</span>
                     )}
-                    {deshabilitada && (
+                    {deshabilitada && !esReapertura && (
                       <span className="text-red-500 text-2xl">✗</span>
                     )}
+                    {esReapertura && (
+                      <span className="text-blue-500 text-2xl">🔒</span>
+                    )}
                   </div>
-                </button>
+                </div>
               );
             })
           )}
