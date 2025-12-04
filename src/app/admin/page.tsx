@@ -10,6 +10,10 @@ interface CanjeResult {
   control_mayor: number;
   total_menor: number;
   total_mayor: number;
+  total_mayor_pagados?: number;
+  total_mayor_reservados?: number;
+  boletos_mayor_pagados?: number;
+  boletos_mayor_reservados?: number;
   diferencia: number;
   diferencia_aplicada: number;
   reglas?: {
@@ -579,19 +583,50 @@ export default function AdminPage() {
                               </div>
                             )}
                             
-                            {boletosMayor.length > 0 && (
-                              <div>
-                                <p className="text-xs text-gray-600 font-medium mb-2">🎫 Boletos ({boletosMayor.length})</p>
-                                <div className="grid grid-cols-2 gap-1 max-h-32 overflow-y-auto">
-                                  {boletosMayor.map((boleto, index) => (
-                                    <div key={index} className="bg-white rounded p-1.5 border border-indigo-200 text-center">
-                                      <p className="text-xs font-bold text-indigo-900">{boleto.fila}{boleto.asiento}</p>
-                                      <p className="text-xs text-gray-500">{boleto.zona}</p>
+                            {boletosMayor.length > 0 && (() => {
+                              const boletosPagados = boletosMayor.filter(b => b.estado === 'pagado');
+                              const boletosReservados = boletosMayor.filter(b => b.estado === 'reservado');
+                              const totalPagados = boletosPagados.reduce((sum, b) => sum + (Number(b.precio) || 0), 0);
+                              const totalReservados = boletosReservados.reduce((sum, b) => sum + (Number(b.precio) || 0), 0);
+                              
+                              return (
+                                <div className="space-y-3">
+                                  {/* Boletos Pagados */}
+                                  {boletosPagados.length > 0 && (
+                                    <div>
+                                      <p className="text-xs text-gray-600 font-medium mb-1">
+                                        ✅ Boletos Pagados ({boletosPagados.length}) - {formatCurrency(totalPagados)}
+                                      </p>
+                                      <div className="grid grid-cols-2 gap-1 max-h-24 overflow-y-auto">
+                                        {boletosPagados.map((boleto, index) => (
+                                          <div key={index} className="bg-green-50 rounded p-1.5 border border-green-300 text-center">
+                                            <p className="text-xs font-bold text-green-900">{boleto.fila}{boleto.asiento}</p>
+                                            <p className="text-xs text-gray-600">{boleto.zona}</p>
+                                          </div>
+                                        ))}
+                                      </div>
                                     </div>
-                                  ))}
+                                  )}
+                                  
+                                  {/* Boletos Reservados */}
+                                  {boletosReservados.length > 0 && (
+                                    <div>
+                                      <p className="text-xs text-gray-600 font-medium mb-1">
+                                        ⏳ Boletos Reservados ({boletosReservados.length}) - {formatCurrency(totalReservados)}
+                                      </p>
+                                      <div className="grid grid-cols-2 gap-1 max-h-24 overflow-y-auto">
+                                        {boletosReservados.map((boleto, index) => (
+                                          <div key={index} className="bg-yellow-50 rounded p-1.5 border border-yellow-300 text-center">
+                                            <p className="text-xs font-bold text-yellow-900">{boleto.fila}{boleto.asiento}</p>
+                                            <p className="text-xs text-gray-600">{boleto.zona}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            )}
+                              );
+                            })()}
                           </div>
                         )}
                       </div>
@@ -652,7 +687,7 @@ export default function AdminPage() {
                 {result && (
                   <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-indigo-200/50">
                     <h3 className="text-lg font-bold text-gray-900 mb-5">Resultado del Cálculo</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                       <div className="bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl p-5 border-2 border-indigo-300 shadow-md">
                         <div className="text-sm text-indigo-700 font-medium mb-1">Monto Hermano Mayor</div>
                         <div className="text-2xl font-bold text-indigo-900">{formatCurrency(result?.total_mayor)}</div>
@@ -670,6 +705,31 @@ export default function AdminPage() {
                         <div className="text-2xl font-bold text-emerald-900">{formatCurrency(Math.max(0, Number((result?.diferencia_aplicada ?? (Number(result?.total_mayor||0) - Number(result?.total_menor||0))) || 0)))}</div>
                       </div>
                     </div>
+
+                    {/* Desglose de boletos del hermano mayor */}
+                    {(result?.total_mayor_pagados !== undefined || result?.total_mayor_reservados !== undefined) && (
+                      <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-200 mb-6">
+                        <h4 className="text-md font-bold text-gray-900 mb-3">Desglose Hermano Mayor</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {result?.total_mayor_pagados !== undefined && (
+                            <div className="bg-green-50 rounded-lg p-4 border-2 border-green-300">
+                              <div className="text-sm text-green-700 font-medium mb-1">
+                                ✅ Boletos Pagados ({result?.boletos_mayor_pagados || 0})
+                              </div>
+                              <div className="text-xl font-bold text-green-900">{formatCurrency(result.total_mayor_pagados)}</div>
+                            </div>
+                          )}
+                          {result?.total_mayor_reservados !== undefined && (
+                            <div className="bg-yellow-50 rounded-lg p-4 border-2 border-yellow-300">
+                              <div className="text-sm text-yellow-700 font-medium mb-1">
+                                ⏳ Boletos Reservados ({result?.boletos_mayor_reservados || 0})
+                              </div>
+                              <div className="text-xl font-bold text-yellow-900">{formatCurrency(result.total_mayor_reservados)}</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Campos de pago para canje */}
                     {result && result.diferencia_aplicada > 0 && (

@@ -65,6 +65,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Error cargando reservas menor', detail: errMenorTodas.message }, { status: 500 });
     }
 
+    // VALIDACIÓN CRÍTICA: El hermano menor DEBE tener boletos pagados para poder hacer el canje
+    const reservasMenorPagadas = (reservasMenorTodas || []).filter(r => r.estado === 'pagado');
+    if (!reservasMenorPagadas || reservasMenorPagadas.length === 0) {
+      return NextResponse.json({ 
+        success: false, 
+        message: 'El hermano menor no tiene boletos pagados. Solo se puede realizar el canje cuando el hermano menor tiene boletos pagados.' 
+      }, { status: 400 });
+    }
+
     // Traer TODAS las reservas del hermano mayor (sin filtrar por función) para calcular el precio total
     // Incluir tanto reservadas como pagadas para calcular el precio correctamente
     const { data: reservasMayorTodas, error: errMayorTodas } = await supabase
@@ -77,10 +86,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Error cargando reservas mayor', detail: errMayorTodas.message }, { status: 500 });
     }
 
+    // Separar boletos del hermano mayor en pagados y reservados
+    const reservasMayorPagadas = (reservasMayorTodas || []).filter(r => r.estado === 'pagado');
+    const reservasMayorReservadas = (reservasMayorTodas || []).filter(r => r.estado === 'reservado');
+
     // Filtrar solo las reservas de funciones 2 y 3 del hermano mayor para el canje
-    // Solo considerar reservas en estado 'reservado' para el canje, aunque el cálculo del total incluya todas
-    const reservasMayorCanje = (reservasMayorTodas || []).filter(r => 
-      funcionesValidas.includes(r.nivel) && r.estado === 'reservado'
+    // Solo considerar reservas en estado 'reservado' para el canje
+    const reservasMayorCanje = reservasMayorReservadas.filter(r => 
+      funcionesValidas.includes(r.nivel)
     );
 
     // Verificar que el hermano mayor tenga al menos una reserva en función 2 o 3 (reservada) para permitir el canje
@@ -124,6 +137,11 @@ export async function POST(req: NextRequest) {
     // Calcular totales: ambos incluyen TODAS sus reservas (funciones 1, 2 y 3)
     const totalMenor = (reservasMenorTodas || []).reduce((acc, r) => acc + (Number(r.precio) || 0), 0);
     const totalMayor = (reservasMayorTodas || []).reduce((acc, r) => acc + (Number(r.precio) || 0), 0);
+    
+    // Calcular montos separados del hermano mayor: pagados y reservados
+    const totalMayorPagados = reservasMayorPagadas.reduce((acc, r) => acc + (Number(r.precio) || 0), 0);
+    const totalMayorReservados = reservasMayorReservadas.reduce((acc, r) => acc + (Number(r.precio) || 0), 0);
+    
     const diferencia = totalMayor - totalMenor;
 
     // Ordenar reservas del mayor para elegir el "primer" boleto de forma estable (por id asc)
@@ -175,6 +193,10 @@ export async function POST(req: NextRequest) {
         control_mayor: controlMayor,
         total_menor: totalMenor,
         total_mayor: totalMayor,
+        total_mayor_pagados: totalMayorPagados,
+        total_mayor_reservados: totalMayorReservados,
+        boletos_mayor_pagados: reservasMayorPagadas.length,
+        boletos_mayor_reservados: reservasMayorReservadas.length,
         diferencia: diferencia,
         diferencia_aplicada: Math.max(0, diferencia),
         reglas: {
