@@ -64,15 +64,19 @@ export const Dashboard: React.FC = () => {
   };
 
   // Función para confirmar cambio de asiento
-  const confirmarCambioAsiento = async (nuevoAsiento: { fila: string; asiento: number }) => {
+  const confirmarCambioAsiento = async (nuevoAsiento: { fila: string; asiento: number; zona?: string; precio?: number }) => {
     if (!asientoACambiar) return;
 
     try {
+      // Usar la zona y precio del nuevo asiento si están disponibles, de lo contrario usar los del asiento actual
+      const nuevaZona = nuevoAsiento.zona || asientoACambiar.seccion;
+      const nuevoPrecio = nuevoAsiento.precio || asientoACambiar.precio;
+      
       const success = await cambiarAsiento(
         { fila: asientoACambiar.fila, asiento: asientoACambiar.asiento },
-        nuevoAsiento,
-        asientoACambiar.precio,
-        asientoACambiar.seccion
+        { fila: nuevoAsiento.fila, asiento: nuevoAsiento.asiento },
+        nuevoPrecio,
+        nuevaZona
       );
 
       if (success) {
@@ -80,7 +84,13 @@ export const Dashboard: React.FC = () => {
         if (comprobanteData) {
           const asientosActualizados = comprobanteData.asientos.map((a: AsientoComprobante) => 
             (a.fila === asientoACambiar.fila && a.asiento === asientoACambiar.asiento)
-              ? { ...a, fila: nuevoAsiento.fila, asiento: nuevoAsiento.asiento }
+              ? { 
+                  ...a, 
+                  fila: nuevoAsiento.fila, 
+                  asiento: nuevoAsiento.asiento,
+                  seccion: nuevaZona,
+                  precio: nuevoPrecio
+                }
               : a
           );
           

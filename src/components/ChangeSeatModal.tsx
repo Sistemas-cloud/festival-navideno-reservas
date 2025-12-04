@@ -7,7 +7,7 @@ import { SectionConfig } from '@/types';
 interface ChangeSeatModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (newSeat: { fila: string; asiento: number }) => void;
+  onConfirm: (newSeat: { fila: string; asiento: number; zona?: string; precio?: number }) => void;
   currentSeat: { fila: string; asiento: number; seccion: string; precio: number };
   alumnoRef: number;
   alumnoNombre: string;
@@ -94,15 +94,16 @@ export const ChangeSeatModal: React.FC<ChangeSeatModalProps> = ({
 }) => {
   const { reservas, pagos, loading } = useReservas(alumnoRef);
   const [selectedSeat, setSelectedSeat] = useState<{ fila: string; asiento: number } | null>(null);
+  const [selectedSection, setSelectedSection] = useState<number>(getSectionFromSeat(currentSeat.fila, currentSeat.precio));
   
-  const sectionNumber = getSectionFromSeat(currentSeat.fila, currentSeat.precio);
-  const config = sectionConfigs[sectionNumber];
+  const config = sectionConfigs[selectedSection];
 
   useEffect(() => {
     if (!isOpen) {
       setSelectedSeat(null);
+      setSelectedSection(getSectionFromSeat(currentSeat.fila, currentSeat.precio));
     }
-  }, [isOpen]);
+  }, [isOpen, currentSeat]);
 
   if (!isOpen || !config) return null;
 
@@ -176,7 +177,13 @@ export const ChangeSeatModal: React.FC<ChangeSeatModalProps> = ({
 
   const handleConfirm = () => {
     if (selectedSeat) {
-      onConfirm(selectedSeat);
+      // Obtener la zona y precio del asiento seleccionado
+      const selectedConfig = sectionConfigs[selectedSection];
+      onConfirm({
+        ...selectedSeat,
+        zona: selectedConfig.name,
+        precio: selectedConfig.price
+      } as any);
     }
   };
 
@@ -228,7 +235,7 @@ export const ChangeSeatModal: React.FC<ChangeSeatModalProps> = ({
   };
 
   const renderNormalLayout = () => {
-    const orderedRows = sectionNumber === 1 
+    const orderedRows = selectedSection === 1 
       ? ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'] 
       : Object.keys(config.rows);
 
@@ -276,11 +283,11 @@ export const ChangeSeatModal: React.FC<ChangeSeatModalProps> = ({
       
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-6xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         <div className="p-6 border-b border-gray-200">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mb-4">
             <div>
               <h2 className="text-2xl font-bold text-gray-800">Cambiar Asiento</h2>
               <p className="text-sm text-gray-600 mt-1">
-                Cambiar de {currentSeat.fila}{currentSeat.asiento} a otro asiento disponible en {config.name}
+                Cambiar de {currentSeat.fila}{currentSeat.asiento} a otro asiento disponible
               </p>
             </div>
             <button
@@ -289,6 +296,30 @@ export const ChangeSeatModal: React.FC<ChangeSeatModalProps> = ({
             >
               ×
             </button>
+          </div>
+          
+          {/* Selector de Zonas */}
+          <div className="flex gap-2 flex-wrap">
+            {[1, 2, 3, 4].map((sectionNum) => {
+              const sectionConfig = sectionConfigs[sectionNum];
+              const isSelected = selectedSection === sectionNum;
+              return (
+                <button
+                  key={sectionNum}
+                  onClick={() => {
+                    setSelectedSection(sectionNum);
+                    setSelectedSeat(null); // Limpiar selección al cambiar de zona
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    isSelected
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {sectionConfig.name} ${sectionConfig.price.toFixed(0)}MXN
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -333,11 +364,16 @@ export const ChangeSeatModal: React.FC<ChangeSeatModalProps> = ({
           <div className="flex justify-between items-center">
             <div>
               {selectedSeat ? (
-                <p className="text-sm text-gray-600">
-                  Nuevo asiento seleccionado: <span className="font-bold text-blue-600">{selectedSeat.fila}{selectedSeat.asiento}</span>
-                </p>
+                <div className="text-sm text-gray-600">
+                  <p>
+                    Nuevo asiento seleccionado: <span className="font-bold text-blue-600">{selectedSeat.fila}{selectedSeat.asiento}</span>
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Zona: {config.name} - Precio: ${config.price.toFixed(2)} MXN
+                  </p>
+                </div>
               ) : (
-                <p className="text-sm text-gray-500">Selecciona un asiento disponible para cambiar</p>
+                <p className="text-sm text-gray-500">Selecciona un asiento disponible de cualquier zona para cambiar</p>
               )}
             </div>
             <div className="flex gap-3">
