@@ -710,7 +710,7 @@ export class ReservaModel {
       // PASO 1: Verificar que el asiento actual pertenece al alumno y está reservado (no pagado)
       const { data: reservaActual, error: checkError } = await supabase
         .from('reservas')
-        .select('id, estado, referencia, nivel, fecha_pago, precio, zona')
+        .select('id, fila, asiento, estado, referencia, nivel, fecha_pago, precio, zona')
         .eq('fila', asientoActual.fila)
         .eq('asiento', asientoActual.asiento)
         .eq('nivel', nivel)
@@ -1149,10 +1149,10 @@ export class ReservaModel {
           const fechaCierre = parseDateString(fechaCierreStr);
           const fechaReaperturaDate = parseDateString(fechaReapertura);
           console.log(`🚫 isPortalCerrado - Portal CERRADO para ${nombreFuncion} (alumno ${alumnoRef})`);
-          return {
-            cerrado: true,
+        return {
+          cerrado: true,
             mensaje: `Las reservas de boletos para la ${nombreFuncion} cerraron el ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM. El portal se reabrirá el ${fechaReaperturaDate.toLocaleDateString('es-MX')} a medianoche. Aún puedes cambiar asientos si lo necesitas.`
-          };
+        };
         }
       }
 
