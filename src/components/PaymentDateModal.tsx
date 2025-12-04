@@ -44,10 +44,13 @@ function parseDateString(dateStr: string): Date {
 }
 
 // Función auxiliar para verificar si una fecha ya pasó
+// Una fecha se considera "pasada" solo si es anterior a hoy (no incluye hoy)
 function isDatePassed(dateStr: string): boolean {
   const today = getTodayInMonterrey();
   const targetDate = parseDateString(dateStr);
-  return today.getTime() > targetDate.getTime();
+  // La fecha pasó solo si hoy es estrictamente mayor que la fecha objetivo
+  // Esto permite seleccionar la fecha si es hoy o en el futuro
+  return targetDate.getTime() < today.getTime();
 }
 
 export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
@@ -86,7 +89,7 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
             // Si solo hay una fecha disponible y tiene limite === 0, estamos en reapertura
             // En este caso, seleccionar automáticamente la fecha fija
             if (data.disponibilidad.length === 1 && data.disponibilidad[0].limite === 0) {
-              setSelectedDate(data.disponibilidad[0].fecha);
+                setSelectedDate(data.disponibilidad[0].fecha);
               console.log('🔄 Período de reapertura detectado - Fecha fija seleccionada automáticamente:', data.disponibilidad[0].fecha);
             }
           } else {
@@ -157,27 +160,42 @@ export const PaymentDateModal: React.FC<PaymentDateModalProps> = ({
               // La fecha1 siempre tiene un límite > 0
               const esFecha2 = disponibilidad.limite === 0 && !esReapertura;
               
-              // Verificar si la fecha ya pasó (solo para fecha1, fecha2 siempre disponible)
-              const fechaYaPaso = !esFecha2 && !esReapertura && isDatePassed(fecha);
-              
               const llena = disponibilidad.llena ?? false;
               const disponibles = disponibilidad.disponibles ?? 0;
               const limite = disponibilidad.limite ?? 0;
-              const deshabilitada = (!esReapertura && (llena || fechaYaPaso));
               
-              console.log(`🔍 Modal - Fecha ${fecha}: esReapertura=${esReapertura}, esFecha2=${esFecha2}, llena=${llena}, fechaYaPaso=${fechaYaPaso}, deshabilitada=${deshabilitada}`);
+              // Verificar si la fecha ya pasó (solo para fecha1, fecha2 siempre disponible)
+              // Solo considerar la fecha como pasada si NO es fecha2 y NO es reapertura
+              const fechaYaPaso = !esFecha2 && !esReapertura && isDatePassed(fecha);
+              
+              // La segunda fecha (fecha2) NUNCA está deshabilitada
+              // La primera fecha se deshabilita SOLO si:
+              //   1. La fecha ya pasó (fechaYaPaso === true) O
+              //   2. Está llena (llena === true) Y no hay lugares disponibles (disponibles === 0)
+              // Si tiene lugares disponibles (disponibles > 0), NO se deshabilita aunque llena sea true
+              const deshabilitada = esFecha2 
+                ? false 
+                : (!esReapertura && (fechaYaPaso || (llena && disponibles === 0)));
+              
+              console.log(`🔍 Modal - Fecha ${fecha}: esReapertura=${esReapertura}, esFecha2=${esFecha2}, llena=${llena}, disponibles=${disponibles}, limite=${limite}, fechaYaPaso=${fechaYaPaso}, deshabilitada=${deshabilitada}`);
               
               return (
                 <div
                   key={fecha}
+                  onClick={() => {
+                    // Solo permitir selección si no está deshabilitada
+                    if (!deshabilitada) {
+                      setSelectedDate(fecha);
+                    }
+                  }}
                   className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
                     esReapertura
                       ? 'border-blue-500 bg-blue-50 shadow-lg cursor-default'
                       : deshabilitada
                       ? 'border-red-300 bg-red-50 cursor-not-allowed opacity-60'
                       : selectedDate === fecha
-                      ? 'border-blue-500 bg-blue-50 shadow-lg'
-                      : 'border-gray-200'
+                      ? 'border-blue-500 bg-blue-50 shadow-lg cursor-pointer hover:bg-blue-100'
+                      : 'border-gray-200 cursor-pointer hover:bg-gray-50 hover:border-gray-300'
                   }`}
                 >
                   <div className="flex items-center justify-between">
