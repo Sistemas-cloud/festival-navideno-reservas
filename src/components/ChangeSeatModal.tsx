@@ -132,15 +132,9 @@ export const ChangeSeatModal: React.FC<ChangeSeatModalProps> = ({
   };
 
   const handleSeatClick = (row: string, seat: number) => {
-    if (isSeatReserved(row, seat) || isSeatPaid(row, seat) || isSeatDisabled(row, seat) || isCurrentSeat(row, seat)) {
+    // Los asientos accesibles no están a la venta, solo son informativos
+    if (isSeatReserved(row, seat) || isSeatPaid(row, seat) || isSeatDisabled(row, seat) || isCurrentSeat(row, seat) || isSeatAccessible(row, seat)) {
       return;
-    }
-
-    if (isSeatAccessible(row, seat)) {
-      const shouldContinue = confirm('Este asiento está reservado para personas con discapacidad. ¿Deseas continuar con la selección?');
-      if (!shouldContinue) {
-        return;
-      }
     }
 
     setSelectedSeat({ fila: row, asiento: seat });
@@ -159,7 +153,7 @@ export const ChangeSeatModal: React.FC<ChangeSeatModalProps> = ({
     } else if (isSeatSelected(row, seat)) {
       classes += ' bg-blue-500 text-white border-blue-600 shadow-lg scale-105';
     } else if (isSeatAccessible(row, seat)) {
-      classes += ' bg-blue-200 text-blue-900 border-blue-400 ring-2 ring-blue-300/60';
+      classes += ' bg-blue-200 text-blue-900 border-blue-400 ring-2 ring-blue-300/60 cursor-not-allowed opacity-75';
     } else if (isSeatDisabled(row, seat)) {
       classes += ' bg-gray-300 text-gray-500 border-gray-400 cursor-not-allowed';
     } else {
