@@ -44,13 +44,15 @@ export async function POST(req: NextRequest) {
       .from('reservas')
       .select('fila, asiento, estado, referencia, zona, nivel, precio, fecha_pago')
       .eq('referencia', control)
-      .in('estado', ['reservado', 'pagado']);
+      .in('estado', ['reservado', 'pagado'])
+      .order('id', { ascending: true });
 
     if (error) {
       return NextResponse.json({ success: false, message: 'Error obteniendo reservas', detail: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, data });
+    // Asegurarse de devolver un array vacío si no hay datos
+    return NextResponse.json({ success: true, data: data || [] });
   } catch (e) {
     const errorMessage = e instanceof Error ? e.message : 'Error desconocido';
     return NextResponse.json({ success: false, message: 'Error inesperado', detail: errorMessage }, { status: 500 });

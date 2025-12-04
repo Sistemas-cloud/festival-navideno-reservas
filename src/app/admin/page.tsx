@@ -449,16 +449,37 @@ export default function AdminPage() {
                                   const todasReservas = reservas.filter((r: ReservaPorControl) => 
                                     r.estado === 'reservado' || r.estado === 'pagado'
                                   );
-                                  const total = todasReservas.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
-                                  setBoletosMenor(todasReservas);
-                                  setTotalMenor(total);
-                                  const reservaConFecha = todasReservas.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
-                                  setFechaPagoMenor(reservaConFecha?.fecha_pago || null);
+                                  
+                                  if (todasReservas.length === 0) {
+                                    setError('No se encontraron reservas (reservadas o pagadas) para este control');
+                                    setBoletosMenor([]);
+                                    setTotalMenor(0);
+                                    setFechaPagoMenor(null);
+                                  } else {
+                                    // Calcular total sumando todos los precios (asegurarse de parsear correctamente)
+                                    const total = todasReservas.reduce((sum: number, r: ReservaPorControl) => {
+                                      const precio = r.precio !== null && r.precio !== undefined 
+                                        ? parseFloat(String(r.precio)) 
+                                        : 0;
+                                      return sum + (isNaN(precio) ? 0 : precio);
+                                    }, 0);
+                                    setBoletosMenor(todasReservas);
+                                    setTotalMenor(total);
+                                    const reservaConFecha = todasReservas.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
+                                    setFechaPagoMenor(reservaConFecha?.fecha_pago || null);
+                                  }
                                 } else {
-                                  setError('No se encontraron reservas para el control menor');
+                                  setError(data.message || 'No se encontraron reservas para el control menor');
+                                  setBoletosMenor([]);
+                                  setTotalMenor(0);
+                                  setFechaPagoMenor(null);
                                 }
-                              } catch {
+                              } catch (err) {
+                                console.error('Error al consultar reservas del control menor:', err);
                                 setError('Error al consultar reservas del control menor');
+                                setBoletosMenor([]);
+                                setTotalMenor(0);
+                                setFechaPagoMenor(null);
                               } finally {
                                 setLoadingConsultaPago(false);
                               }
@@ -504,16 +525,37 @@ export default function AdminPage() {
                                   const todasReservas = reservas.filter((r: ReservaPorControl) => 
                                     r.estado === 'reservado' || r.estado === 'pagado'
                                   );
-                                  const total = todasReservas.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
-                                  setBoletosMayor(todasReservas);
-                                  setTotalMayor(total);
-                                  const reservaConFecha = todasReservas.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
-                                  setFechaPagoMayor(reservaConFecha?.fecha_pago || null);
+                                  
+                                  if (todasReservas.length === 0) {
+                                    setError('No se encontraron reservas (reservadas o pagadas) para este control');
+                                    setBoletosMayor([]);
+                                    setTotalMayor(0);
+                                    setFechaPagoMayor(null);
+                                  } else {
+                                    // Calcular total sumando todos los precios (asegurarse de parsear correctamente)
+                                    const total = todasReservas.reduce((sum: number, r: ReservaPorControl) => {
+                                      const precio = r.precio !== null && r.precio !== undefined 
+                                        ? parseFloat(String(r.precio)) 
+                                        : 0;
+                                      return sum + (isNaN(precio) ? 0 : precio);
+                                    }, 0);
+                                    setBoletosMayor(todasReservas);
+                                    setTotalMayor(total);
+                                    const reservaConFecha = todasReservas.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
+                                    setFechaPagoMayor(reservaConFecha?.fecha_pago || null);
+                                  }
                                 } else {
-                                  setError('No se encontraron reservas para el control mayor');
+                                  setError(data.message || 'No se encontraron reservas para el control mayor');
+                                  setBoletosMayor([]);
+                                  setTotalMayor(0);
+                                  setFechaPagoMayor(null);
                                 }
-                              } catch {
+                              } catch (err) {
+                                console.error('Error al consultar reservas del control mayor:', err);
                                 setError('Error al consultar reservas del control mayor');
+                                setBoletosMayor([]);
+                                setTotalMayor(0);
+                                setFechaPagoMayor(null);
                               } finally {
                                 setLoadingConsultaPago(false);
                               }
