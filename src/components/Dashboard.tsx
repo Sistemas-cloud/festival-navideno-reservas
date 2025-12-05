@@ -229,9 +229,10 @@ export const Dashboard: React.FC = () => {
   // Validar fechas cuando se selecciona una sección
   // El sistema se cierra a las 13:00 (1 PM) del último día de venta para cada nivel
   // Los usuarios pueden cambiar asientos pero no pueden reservar nuevos después del cierre
+  // Durante el período de reapertura, el portal se abre nuevamente
   // Los usuarios internos nunca están bloqueados por fechas
   // Usa hora de Monterrey para todas las comparaciones
-  const validateDates = () => {
+  const validateDates = async () => {
     // Usuarios internos siempre pueden reservar
     if (userData.isInternal) {
       console.log('✅ Dashboard validateDates - Usuario interno, acceso permitido');
@@ -283,33 +284,82 @@ export const Dashboard: React.FC = () => {
       return currentHour >= 13;
     };
 
+    // Función helper para verificar si ya pasó la hora de reapertura
+    const isAfterReopeningTime = (reopenDateStr: string, reopenHour: number = 20): boolean => {
+      const [reopenYear, reopenMonth, reopenDay] = reopenDateStr.split('-').map(Number);
+      
+      // Comparar año
+      if (currentYear > reopenYear) return true;
+      if (currentYear < reopenYear) return false;
+      
+      // Comparar mes
+      if (currentMonth > reopenMonth) return true;
+      if (currentMonth < reopenMonth) return false;
+      
+      // Comparar día
+      if (currentDay > reopenDay) return true;
+      if (currentDay < reopenDay) return false;
+      
+      // Si es el mismo día, verificar si ya pasó la hora de reapertura
+      return currentHour >= reopenHour;
+    };
+
     // Validar según la función del alumno - SOLO validar la función correspondiente
     if (levelClose === 1) {
       // Función 1: Maternal + Kinder + 1° primaria
       // Vende: 1-2 diciembre, Cierra: a las 13:00 del 2 de diciembre
+      // Reabre: 4 de diciembre a las 20:00 (8 PM)
       const yaCerro = isAfterClosingTime(fechaCierreFuncion1);
-      console.log(`🔍 Dashboard validateDates - Función 1: fechaCierre=${fechaCierreFuncion1}, yaCerro=${yaCerro}`);
-      if (yaCerro) {
+      const fechaReaperturaFuncion1 = "2025-12-04";
+      const yaReabrio = isAfterReopeningTime(fechaReaperturaFuncion1, 20); // 8 PM
+      const enReapertura = yaCerro && yaReabrio;
+      
+      console.log(`🔍 Dashboard validateDates - Función 1: fechaCierre=${fechaCierreFuncion1}, fechaReapertura=${fechaReaperturaFuncion1}, yaCerro=${yaCerro}, yaReabrio=${yaReabrio}, enReapertura=${enReapertura}`);
+      
+      if (yaCerro && !enReapertura) {
+        // Está cerrado y aún no ha reabierto
         alert("Las reservas de boletos para la 1ra Función ya han concluido. El período de venta terminó el 2 de diciembre a la 1:00 PM. Aún puedes cambiar asientos si lo necesitas.");
         return false;
+      }
+      // Si está en reapertura, permitir acceso
+      if (enReapertura) {
+        console.log('✅ Dashboard validateDates - Función 1 en período de reapertura, acceso permitido');
       }
     } else if (levelClose === 2) {
       // Función 2: 2°-5° primaria
       // Vende: 4-5 diciembre, Cierra: a las 13:00 del 5 de diciembre
+      // Reabre: 10 de diciembre a medianoche
       const yaCerro = isAfterClosingTime(fechaCierreFuncion2);
-      console.log(`🔍 Dashboard validateDates - Función 2: fechaCierre=${fechaCierreFuncion2}, yaCerro=${yaCerro}`);
-      if (yaCerro) {
+      const fechaReaperturaFuncion2 = "2025-12-10";
+      const yaReabrio = isAfterReopeningTime(fechaReaperturaFuncion2, 0); // Medianoche
+      const enReapertura = yaCerro && yaReabrio;
+      
+      console.log(`🔍 Dashboard validateDates - Función 2: fechaCierre=${fechaCierreFuncion2}, fechaReapertura=${fechaReaperturaFuncion2}, yaCerro=${yaCerro}, yaReabrio=${yaReabrio}, enReapertura=${enReapertura}`);
+      
+      if (yaCerro && !enReapertura) {
         alert("Las reservas de boletos para la 2da Función ya han concluido. El período de venta terminó el 5 de diciembre a la 1:00 PM. Aún puedes cambiar asientos si lo necesitas.");
         return false;
+      }
+      if (enReapertura) {
+        console.log('✅ Dashboard validateDates - Función 2 en período de reapertura, acceso permitido');
       }
     } else if (levelClose === 3) {
       // Función 3: 6° primaria + Secundaria
       // Vende: 8-9 diciembre, Cierra: a las 13:00 del 9 de diciembre
+      // Reabre: 10 de diciembre a medianoche
       const yaCerro = isAfterClosingTime(fechaCierreFuncion3);
-      console.log(`🔍 Dashboard validateDates - Función 3: fechaCierre=${fechaCierreFuncion3}, yaCerro=${yaCerro}`);
-      if (yaCerro) {
+      const fechaReaperturaFuncion3 = "2025-12-10";
+      const yaReabrio = isAfterReopeningTime(fechaReaperturaFuncion3, 0); // Medianoche
+      const enReapertura = yaCerro && yaReabrio;
+      
+      console.log(`🔍 Dashboard validateDates - Función 3: fechaCierre=${fechaCierreFuncion3}, fechaReapertura=${fechaReaperturaFuncion3}, yaCerro=${yaCerro}, yaReabrio=${yaReabrio}, enReapertura=${enReapertura}`);
+      
+      if (yaCerro && !enReapertura) {
         alert("Las reservas de boletos para la 3ra Función ya han concluido. El período de venta terminó el 9 de diciembre a la 1:00 PM. Aún puedes cambiar asientos si lo necesitas.");
         return false;
+      }
+      if (enReapertura) {
+        console.log('✅ Dashboard validateDates - Función 3 en período de reapertura, acceso permitido');
       }
     } else {
       console.warn(`⚠️ Dashboard validateDates - Función desconocida: ${levelClose}, permitiendo acceso`);
@@ -510,8 +560,8 @@ export const Dashboard: React.FC = () => {
           {/* Sección Oro */}
           <div 
             className="group relative bg-gradient-to-br from-amber-500 via-yellow-500 to-amber-600 rounded-3xl p-8 cursor-pointer transform hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border border-amber-400/20 hover:border-amber-300/40"
-            onClick={() => {
-              if (validateDates()) {
+            onClick={async () => {
+              if (await validateDates()) {
                 setSelectedSection(1);
               }
             }}
@@ -542,8 +592,8 @@ export const Dashboard: React.FC = () => {
           {/* Sección Plata */}
           <div 
             className="group relative bg-gradient-to-br from-slate-500 via-slate-600 to-slate-700 rounded-3xl p-8 cursor-pointer transform hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border border-slate-400/20 hover:border-slate-300/40"
-            onClick={() => {
-              if (validateDates()) {
+            onClick={async () => {
+              if (await validateDates()) {
                 setSelectedSection(2);
               }
             }}
@@ -574,8 +624,8 @@ export const Dashboard: React.FC = () => {
           {/* Sección Bronce Palcos */}
           <div 
             className="group relative bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-3xl p-8 cursor-pointer transform hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border border-orange-400/20 hover:border-orange-300/40"
-            onClick={() => {
-              if (validateDates()) {
+            onClick={async () => {
+              if (await validateDates()) {
                 setSelectedSection(3);
               }
             }}
@@ -606,8 +656,8 @@ export const Dashboard: React.FC = () => {
           {/* Sección Bronce Balcón */}
           <div 
             className="group relative bg-gradient-to-br from-amber-600 via-amber-700 to-yellow-700 rounded-3xl p-8 cursor-pointer transform hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border border-amber-400/20 hover:border-amber-300/40"
-            onClick={() => {
-              if (validateDates()) {
+            onClick={async () => {
+              if (await validateDates()) {
                 setSelectedSection(4);
               }
             }}
