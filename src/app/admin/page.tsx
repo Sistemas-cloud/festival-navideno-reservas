@@ -1616,6 +1616,89 @@ export default function AdminPage() {
                           </div>
                         </div>
 
+                        {/* Selector de Función */}
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Seleccionar función a reportar:
+                          </label>
+                          <select
+                            value={funcionReporte === null ? 'todas' : funcionReporte.toString()}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFuncionReporte(val === 'todas' ? null : parseInt(val));
+                            }}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="todas">📊 Todas las funciones</option>
+                            <option value="1">🎭 Función 1 - Kinder</option>
+                            <option value="2">📚 Función 2 - Primaria</option>
+                            <option value="3">🎓 Función 3 - Secundaria</option>
+                          </select>
+                        </div>
+
+                        <div className="flex gap-3 mb-4">
+                        <button
+                          type="button"
+                          disabled={loadingCorteCaja}
+                          onClick={async () => {
+                            setError(null);
+                            try {
+                              if (!currentUser) {
+                                setError('No hay usuario autenticado. Por favor, inicia sesión nuevamente.');
+                                return;
+                              }
+
+                              const headers = getAdminHeaders(false);
+                              
+                              if (!headers['x-admin-user'] || !headers['x-admin-pass']) {
+                                setError('Error de autenticación. Por favor, cierra sesión e inicia sesión nuevamente.');
+                                return;
+                              }
+
+                              // Consultar datos RAW sin filtros
+                              const res = await fetch('/api/admin/reportes/cortes-caja-debug?funcion=2', {
+                                method: 'GET',
+                                headers: headers,
+                              });
+                              
+                              if (!res.ok) {
+                                try {
+                                  const errorData = await res.json();
+                                  setError(errorData.message || 'Error al obtener datos RAW');
+                                } catch {
+                                  setError('Error al obtener datos RAW');
+                                }
+                                return;
+                              }
+
+                              const data = await res.json();
+                              
+                              // Mostrar datos en consola y descargar JSON
+                              console.log('📊 DATOS RAW DEL REPORTE (Función 2 - Primaria):', data);
+                              
+                              // Crear archivo JSON para descargar
+                              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `cortes-caja-raw-funcion-2-${new Date().toISOString().split('T')[0]}.json`;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                              URL.revokeObjectURL(url);
+                              
+                              alert(`✅ Datos RAW descargados. Revisa la consola del navegador (F12) para ver los detalles.\n\nZona ORO: ${data.estadisticas?.funcion_2_zona_oro?.boletos || 0} boletos`);
+                            } catch (err) {
+                              console.error('Error:', err);
+                              setError('Error al obtener datos RAW');
+                            }
+                          }}
+                          className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 text-white font-semibold py-2 px-4 rounded-lg hover:from-yellow-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg text-sm"
+                        >
+                          📊 Ver Datos RAW (Función 2)
+                        </button>
+                        </div>
+
                         <button
                           type="button"
                           disabled={loadingCorteCaja}
@@ -1637,7 +1720,8 @@ export default function AdminPage() {
                                 return;
                               }
 
-                              const res = await fetch('/api/admin/reportes/cortes-caja', {
+                              const funcionParam = funcionReporte !== null ? `?funcion=${funcionReporte}` : '';
+                              const res = await fetch(`/api/admin/reportes/cortes-caja${funcionParam}`, {
                                 method: 'GET',
                                 headers: headers,
                               });
@@ -1757,7 +1841,65 @@ export default function AdminPage() {
                                 pdf.setFont('helvetica', 'bold');
                                 pdf.setTextColor(34, 197, 94);
                                 pdf.text(`Total: $${corte.totalRecaudado.toFixed(2)}`, marginLeft, yPosition);
-                                yPosition += 8;
+                                yPosition += 10;
+                                
+                                // Desglose por fechas de pago
+                                if (corte.fechasPago && corte.fechasPago.length > 0) {
+                                  yPosition = checkAndAddPage(yPosition, 25);
+                                  pdf.setFontSize(10);
+                                  pdf.setFont('helvetica', 'bold');
+                                  pdf.setTextColor(0, 0, 0);
+                                  pdf.text('Desglose por Fecha de Pago:', marginLeft, yPosition);
+                                  yPosition += 8;
+                                  
+                                  pdf.setFont('helvetica', 'normal');
+                                  pdf.setFontSize(9);
+                                  
+                                  for (const fechaData of corte.fechasPago) {
+                                    yPosition = checkAndAddPage(yPosition, 20);
+                                    
+                                    try {
+                                      const fechaFormateada = formatPaymentDate(fechaData.fecha);
+                                      pdf.setTextColor(37, 99, 235);
+                                      pdf.setFont('helvetica', 'bold');
+                                      pdf.text(`• ${fechaFormateada}`, marginLeft + 5, yPosition);
+                                      
+                                      yPosition += 6;
+                                      pdf.setFont('helvetica', 'normal');
+                                      pdf.setFontSize(8);
+                                      pdf.setTextColor(80, 80, 80);
+                                      pdf.text(`  Boletos: ${fechaData.boletos}`, marginLeft + 10, yPosition);
+                                      yPosition += 5;
+                                      pdf.text(`  Familias: ${fechaData.familias}`, marginLeft + 10, yPosition);
+                                      yPosition += 5;
+                                      pdf.setFont('helvetica', 'bold');
+                                      pdf.setTextColor(34, 197, 94);
+                                      pdf.text(`  Total: $${fechaData.total.toFixed(2)}`, marginLeft + 10, yPosition);
+                                    } catch (error) {
+                                      // Si hay error formateando la fecha, usar la fecha cruda
+                                      pdf.setTextColor(37, 99, 235);
+                                      pdf.setFont('helvetica', 'bold');
+                                      pdf.text(`• Fecha ${fechaData.fecha}`, marginLeft + 5, yPosition);
+                                      
+                                      yPosition += 6;
+                                      pdf.setFont('helvetica', 'normal');
+                                      pdf.setFontSize(8);
+                                      pdf.setTextColor(80, 80, 80);
+                                      pdf.text(`  Boletos: ${fechaData.boletos}`, marginLeft + 10, yPosition);
+                                      yPosition += 5;
+                                      pdf.text(`  Familias: ${fechaData.familias}`, marginLeft + 10, yPosition);
+                                      yPosition += 5;
+                                      pdf.setFont('helvetica', 'bold');
+                                      pdf.setTextColor(34, 197, 94);
+                                      pdf.text(`  Total: $${fechaData.total.toFixed(2)}`, marginLeft + 10, yPosition);
+                                    }
+                                    
+                                    yPosition += 5;
+                                    pdf.setFontSize(9);
+                                  }
+                                  
+                                  yPosition += 5;
+                                }
                                 
                                 // Línea separadora
                                 pdf.setDrawColor(200, 200, 200);
