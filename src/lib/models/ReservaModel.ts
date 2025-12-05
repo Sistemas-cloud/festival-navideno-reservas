@@ -1137,9 +1137,12 @@ export class ReservaModel {
       if (yaCerro) {
         // Verificar si ya debería haber reabierto
         const { getReopeningDateForFunction } = await import('../config/earlyAccess');
-        const { isDateReached } = await import('../utils/timezone');
+        const { isAfterReopeningTime } = await import('../utils/timezone');
         const fechaReapertura = getReopeningDateForFunction(funcion);
-        const yaReabrio = isDateReached(fechaReapertura);
+        
+        // La función 1 reabre a las 20:00 (8 PM), las demás a medianoche
+        const horaReapertura = funcion === 1 ? 20 : 0;
+        const yaReabrio = isAfterReopeningTime(fechaReapertura, horaReapertura);
         
         if (yaReabrio) {
           // Debería estar abierto pero no está en reapertura, algo está mal
@@ -1148,10 +1151,11 @@ export class ReservaModel {
           // Está cerrado y aún no ha reabierto
           const fechaCierre = parseDateString(fechaCierreStr);
           const fechaReaperturaDate = parseDateString(fechaReapertura);
+          const horaReaperturaTexto = funcion === 1 ? '8:00 PM' : 'medianoche';
           console.log(`🚫 isPortalCerrado - Portal CERRADO para ${nombreFuncion} (alumno ${alumnoRef})`);
         return {
           cerrado: true,
-            mensaje: `Las reservas de boletos para la ${nombreFuncion} cerraron el ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM. El portal se reabrirá el ${fechaReaperturaDate.toLocaleDateString('es-MX')} a medianoche. Aún puedes cambiar asientos si lo necesitas.`
+            mensaje: `Las reservas de boletos para la ${nombreFuncion} cerraron el ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM. El portal se reabrirá el ${fechaReaperturaDate.toLocaleDateString('es-MX')} a las ${horaReaperturaTexto}. Aún puedes cambiar asientos si lo necesitas.`
         };
         }
       }
@@ -1173,20 +1177,25 @@ export class ReservaModel {
   async isReopeningPeriod(funcion: number): Promise<boolean> {
     try {
       const { getPreviousClosingDateForFunction, getReopeningDateForFunction } = await import('../config/earlyAccess');
-      const { isAfterClosingTime, isDateReached } = await import('../utils/timezone');
+      const { isAfterClosingTime, isAfterReopeningTime } = await import('../utils/timezone');
       
       const fechaCierreAnterior = getPreviousClosingDateForFunction(funcion);
       const fechaReapertura = getReopeningDateForFunction(funcion);
       
       // Estamos en reapertura si:
       // 1. Ya pasó el cierre anterior (a las 13:00 del día de cierre)
-      // 2. Y ya llegó o pasó la fecha de reapertura (a medianoche)
+      // 2. Y ya llegó o pasó la hora de reapertura
+      //    - Función 1: reabre a las 20:00 (8 PM)
+      //    - Funciones 2 y 3: reabren a medianoche (00:00)
       const yaCerro = isAfterClosingTime(fechaCierreAnterior);
-      const yaReabrio = isDateReached(fechaReapertura);
+      
+      // La función 1 reabre a las 20:00 (8 PM), las demás a medianoche
+      const horaReapertura = funcion === 1 ? 20 : 0;
+      const yaReabrio = isAfterReopeningTime(fechaReapertura, horaReapertura);
       
       const enReapertura = yaCerro && yaReabrio;
       
-      console.log(`🔍 isReopeningPeriod - Función ${funcion}: fechaCierreAnterior=${fechaCierreAnterior}, fechaReapertura=${fechaReapertura}, yaCerro=${yaCerro}, yaReabrio=${yaReabrio}, enReapertura=${enReapertura}`);
+      console.log(`🔍 isReopeningPeriod - Función ${funcion}: fechaCierreAnterior=${fechaCierreAnterior}, fechaReapertura=${fechaReapertura}, horaReapertura=${horaReapertura}:00, yaCerro=${yaCerro}, yaReabrio=${yaReabrio}, enReapertura=${enReapertura}`);
       
       return enReapertura;
     } catch (error) {

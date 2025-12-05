@@ -52,11 +52,13 @@ export const OPENING_DATES = {
 
 /**
  * Fechas de reapertura por función (en formato YYYY-MM-DD)
- * El sistema se reabrirá a partir de estas fechas a medianoche en hora de Monterrey
+ * El sistema se reabrirá a partir de estas fechas en hora de Monterrey:
+ * - Función 1: a las 20:00 (8 PM)
+ * - Funciones 2 y 3: a medianoche (00:00)
  * Durante el período de reapertura, no hay límite de boletos por familia
  */
 export const REOPENING_DATES = {
-  FUNCION_1: '2025-12-04', // Se reabre el 4 de diciembre a medianoche
+  FUNCION_1: '2025-12-04', // Se reabre el 4 de diciembre a las 20:00 (8 PM)
   FUNCION_2: '2025-12-10', // Se reabre el 10 de diciembre a medianoche
   FUNCION_3: '2025-12-10'  // Se reabre el 10 de diciembre a medianoche
 };

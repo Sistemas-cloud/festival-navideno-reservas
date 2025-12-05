@@ -137,6 +137,33 @@ export function isAfterClosingTime(closingDateStr: string): boolean {
 }
 
 /**
+ * Verifica si la fecha/hora actual en Monterrey ha pasado la hora de reapertura
+ * La reapertura puede ser a una hora específica (por defecto 20:00 / 8 PM) del día especificado
+ * @param reopeningDateStr Fecha de reapertura en formato YYYY-MM-DD
+ * @param reopeningHour Hora de reapertura (0-23), por defecto 20 (8 PM)
+ */
+export function isAfterReopeningTime(reopeningDateStr: string, reopeningHour: number = 20): boolean {
+  const [reopenYear, reopenMonth, reopenDay] = reopeningDateStr.split('-').map(Number);
+  const now = getDateTimeInMonterrey();
+  
+  // Comparar primero el año
+  if (now.year > reopenYear) return true;
+  if (now.year < reopenYear) return false;
+  
+  // Comparar el mes
+  if (now.month > reopenMonth) return true;
+  if (now.month < reopenMonth) return false;
+  
+  // Comparar el día y hora
+  if (now.day > reopenDay) return true;
+  if (now.day < reopenDay) return false;
+  
+  // Si es el mismo día, verificar si ya pasó la hora de reapertura
+  // Si la hora actual es >= a la hora de reapertura, ya reabrió
+  return now.hour >= reopeningHour;
+}
+
+/**
  * Crea una fecha de cierre a partir de un string YYYY-MM-DD
  * Esta función se usa para comparaciones y establece la hora de cierre a las 13:00
  * @param dateStr String en formato YYYY-MM-DD
