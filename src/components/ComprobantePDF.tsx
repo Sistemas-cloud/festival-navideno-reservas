@@ -122,9 +122,9 @@ export const ComprobantePDF: React.FC<ComprobantePDFProps> = ({ data, onClose, o
         
         // Indicar si el asiento está pagado
         const estadoTexto = asiento.estado === 'pagado' ? ' ✓ PAGADO' : '';
-        const colorTexto = asiento.estado === 'pagado' ? [34, 197, 94] : [0, 0, 0]; // Verde si está pagado
+        const colorTexto: [number, number, number] = asiento.estado === 'pagado' ? [34, 197, 94] : [0, 0, 0]; // Verde si está pagado
         
-        pdf.setTextColor(...colorTexto);
+        pdf.setTextColor(colorTexto[0], colorTexto[1], colorTexto[2]);
         pdf.text(`${index + 1}. Sección: ${asiento.seccion}${estadoTexto}`, marginLeft, yPosition);
         pdf.text(`   Fila: ${asiento.fila} - Asiento: ${asiento.asiento}`, marginLeft + 5, yPosition + 8);
         pdf.text(`   Precio: $${asiento.precio}${asiento.estado === 'pagado' ? ' (Liquidado)' : ''}`, marginLeft + 5, yPosition + 16);
