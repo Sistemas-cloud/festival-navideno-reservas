@@ -1,7 +1,8 @@
 import { getSupabaseClient } from '../supabase';
 import { validateInternalUser } from '../config/internalUsers';
 import { hasEarlyAccess, getOpeningDateForFunction } from '../config/earlyAccess';
-import { getTodayInMonterrey, parseDateString, isAfterClosingTime } from '../utils/timezone';
+import { getTodayInMonterrey, parseDateString, isAfterClosingTime, isAfterOpeningTime, isAfterReopeningTime } from '../utils/timezone';
+import { getReopeningDateForFunction } from '../config/earlyAccess';
 
 interface HermanoData {
   nombre: string;
@@ -266,12 +267,8 @@ export class AuthModel {
         
         // Para funciones 2 y 3, verificar si ya pasó la hora de apertura (8 PM)
         // Primero verificar si estamos en la fecha de reapertura
-        const { getReopeningDateForFunction } = await import('../config/earlyAccess');
-        const { isAfterOpeningTime, isAfterReopeningTime, getTodayInMonterrey, parseDateString } = await import('@/lib/utils/timezone');
-        
         const fechaReaperturaStr = getReopeningDateForFunction(funcionNum);
         const fechaReapertura = parseDateString(fechaReaperturaStr);
-        const today = getTodayInMonterrey();
         
         // Verificar si estamos en la fecha de reapertura (sin importar la hora)
         const estamosEnFechaReapertura = today.getTime() >= fechaReapertura.getTime();
