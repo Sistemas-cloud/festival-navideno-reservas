@@ -74,7 +74,7 @@ function validateUserAccess(userData: UserData): boolean {
   }
 
   if (!tieneAccesoAnticipado && !yaAbrio) {
-    console.log(`🚫 Validación de acceso: Usuario ${userData.alumnoRef} no tiene acceso - fecha/hora de apertura: ${fechaAperturaStr} a las 8 PM`);
+    console.log(`🚫 Validación de acceso: Usuario ${userData.alumnoRef} no tiene acceso - fecha/hora de reapertura: ${fechaReaperturaStr} a las 8 PM`);
     return false;
   }
 
