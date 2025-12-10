@@ -266,41 +266,40 @@ export class AuthModel {
         console.log(`🔍 AuthModel - today: ${today.toLocaleDateString('es-MX')}`);
         
         // Para funciones 2 y 3, verificar si ya pasó la hora de apertura (8 PM)
-        // Primero verificar si estamos en la fecha de reapertura
+        // IMPORTANTE: Las funciones 2 y 3 deben estar cerradas hasta las 8 PM del 10 de diciembre
+        // No usar la fecha de apertura original, solo la fecha de reapertura
         const fechaReaperturaStr = getReopeningDateForFunction(funcionNum);
         const fechaReapertura = parseDateString(fechaReaperturaStr);
         
-        // Verificar si estamos en la fecha de reapertura (sin importar la hora)
-        const estamosEnFechaReapertura = today.getTime() >= fechaReapertura.getTime();
+        // Verificar si estamos en la fecha de reapertura o después
+        const estamosEnFechaReaperturaOdespues = today.getTime() >= fechaReapertura.getTime();
         
-        // Si estamos en la fecha de reapertura, verificar si ya pasaron las 8 PM
-        // Si no estamos en reapertura, verificar la fecha de apertura original
         let yaAbrio: boolean;
-        if (estamosEnFechaReapertura) {
-          // Estamos en la fecha de reapertura, verificar si ya pasaron las 8 PM
-          yaAbrio = isAfterReopeningTime(fechaReaperturaStr, 20);
-          console.log(`🔍 AuthModel - En fecha de reapertura: fechaReapertura=${fechaReaperturaStr}, yaAbrio (8 PM)=${yaAbrio}`);
+        if (estamosEnFechaReaperturaOdespues) {
+          // Estamos en la fecha de reapertura o después, verificar si ya pasaron las 8 PM del día de reapertura
+          yaAbrio = isAfterReopeningTime(fechaReaperturaStr, 20); // 20 = 8 PM
+          console.log(`🔍 AuthModel - En fecha de reapertura o después: fechaReapertura=${fechaReaperturaStr}, yaAbrio (8 PM)=${yaAbrio}`);
         } else {
-          // No estamos en reapertura, verificar fecha de apertura original
-          yaAbrio = isAfterOpeningTime(fechaAperturaStr, 20); // 20 = 8 PM
-          console.log(`🔍 AuthModel - Apertura original: fechaApertura=${fechaAperturaStr}, yaAbrio (8 PM)=${yaAbrio}`);
+          // Estamos ANTES de la fecha de reapertura, el portal debe estar CERRADO
+          yaAbrio = false;
+          console.log(`🔍 AuthModel - ANTES de fecha de reapertura: fechaReapertura=${fechaReaperturaStr}, portal CERRADO`);
         }
         
         // Solo denegar acceso si NO tiene acceso anticipado Y aún no ha pasado la hora de apertura (8 PM)
         if (!tieneAccesoAnticipado && !yaAbrio) {
-          const fechaAperturaFormateada = fechaApertura.toLocaleDateString('es-MX', {
+          const fechaReaperturaFormateada = fechaReapertura.toLocaleDateString('es-MX', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
             timeZone: 'America/Monterrey'
           });
-          console.log(`🚫 Acceso denegado: El sistema estará disponible a partir del ${fechaAperturaFormateada} a las 8:00 PM (hora de Monterrey) para la ${nombreFuncion}`);
-          console.log(`📅 Fecha actual en Monterrey: ${today.toLocaleDateString('es-MX')}, Fecha de apertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
+          console.log(`🚫 Acceso denegado: El sistema estará disponible a partir del ${fechaReaperturaFormateada} a las 8:00 PM (hora de Monterrey) para la ${nombreFuncion}`);
+          console.log(`📅 Fecha actual en Monterrey: ${today.toLocaleDateString('es-MX')}, Fecha de reapertura: ${fechaReapertura.toLocaleDateString('es-MX')}`);
           return {
             success: false,
-            message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} a las 8:00 PM (hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha y hora.`,
+            message: `El sistema de reservas estará disponible a partir del ${fechaReaperturaFormateada} a las 8:00 PM (hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha y hora.`,
             isAccessDeniedByDate: true,
-            fechaApertura: fechaAperturaStr,
+            fechaApertura: fechaReaperturaStr,
             nombreFuncion: nombreFuncion
           };
         }

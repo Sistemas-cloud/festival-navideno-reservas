@@ -50,27 +50,27 @@ function validateUserAccess(userData: UserData): boolean {
   }
 
   // Para funciones 2 y 3, verificar acceso anticipado o fecha/hora de apertura (8 PM)
+  // IMPORTANTE: Las funciones 2 y 3 deben estar cerradas hasta las 8 PM del 10 de diciembre
   const controlNumber = Number(userData.alumnoRef);
   const tieneAccesoAnticipado = hasEarlyAccess(controlNumber);
-  const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
 
   // Verificar si estamos en la fecha de reapertura
   const fechaReaperturaStr = getReopeningDateForFunction(funcionNum);
   const fechaReapertura = parseDateString(fechaReaperturaStr);
   const today = getTodayInMonterrey();
   
-  // Verificar si estamos en la fecha de reapertura (sin importar la hora)
-  const estamosEnFechaReapertura = today.getTime() >= fechaReapertura.getTime();
+  // Verificar si estamos en la fecha de reapertura o después
+  const estamosEnFechaReaperturaOdespues = today.getTime() >= fechaReapertura.getTime();
   
-  // Si estamos en la fecha de reapertura, verificar si ya pasaron las 8 PM
-  // Si no estamos en reapertura, verificar la fecha de apertura original
+  // Si estamos en la fecha de reapertura o después, verificar si ya pasaron las 8 PM
+  // Si estamos ANTES de la fecha de reapertura, el portal debe estar CERRADO
   let yaAbrio: boolean;
-  if (estamosEnFechaReapertura) {
-    // Estamos en la fecha de reapertura, verificar si ya pasaron las 8 PM
-    yaAbrio = isAfterReopeningTime(fechaReaperturaStr, 20);
+  if (estamosEnFechaReaperturaOdespues) {
+    // Estamos en la fecha de reapertura o después, verificar si ya pasaron las 8 PM del día de reapertura
+    yaAbrio = isAfterReopeningTime(fechaReaperturaStr, 20); // 20 = 8 PM
   } else {
-    // No estamos en reapertura, verificar fecha de apertura original
-    yaAbrio = isAfterOpeningTime(fechaAperturaStr, 20); // 20 = 8 PM
+    // Estamos ANTES de la fecha de reapertura, el portal debe estar CERRADO
+    yaAbrio = false;
   }
 
   if (!tieneAccesoAnticipado && !yaAbrio) {
