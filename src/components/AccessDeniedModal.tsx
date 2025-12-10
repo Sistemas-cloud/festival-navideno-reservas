@@ -58,6 +58,12 @@ export const AccessDeniedModal: React.FC<AccessDeniedModalProps> = ({
 
   const fechaAperturaFormateada = formatOpeningDate(fechaApertura);
 
+  // Determinar la hora de apertura según la función
+  // Funciones 2 y 3: 8:00 PM, Función 1: 12:00 AM (medianoche)
+  const horaApertura = nombreFuncion.includes('2da') || nombreFuncion.includes('3ra') 
+    ? '8:00 PM' 
+    : '12:00 AM (medianoche)';
+
   return (
     <div 
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm"
@@ -106,7 +112,7 @@ export const AccessDeniedModal: React.FC<AccessDeniedModalProps> = ({
                   {fechaAperturaFormateada}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  A las 12:00 AM (medianoche) hora de Monterrey
+                  A las {horaApertura} hora de Monterrey
                 </p>
               </div>
             </div>
