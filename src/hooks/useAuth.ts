@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserData, HermanosData } from '@/types';
 import { hasEarlyAccess, getOpeningDateForFunction } from '@/lib/config/earlyAccess';
-import { getTodayInMonterrey, isAfterOpeningTime } from '@/lib/utils/timezone';
+import { getTodayInMonterrey, isAfterOpeningTime, isAfterReopeningTime, parseDateString } from '@/lib/utils/timezone';
+import { getReopeningDateForFunction } from '@/lib/config/earlyAccess';
 
 /**
  * Valida si un usuario tiene acceso al sistema basándose en:
@@ -54,9 +55,6 @@ function validateUserAccess(userData: UserData): boolean {
   const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
 
   // Verificar si estamos en la fecha de reapertura
-  const { getReopeningDateForFunction } = await import('@/lib/config/earlyAccess');
-  const { isAfterOpeningTime, isAfterReopeningTime, parseDateString } = await import('@/lib/utils/timezone');
-  
   const fechaReaperturaStr = getReopeningDateForFunction(funcionNum);
   const fechaReapertura = parseDateString(fechaReaperturaStr);
   const today = getTodayInMonterrey();
