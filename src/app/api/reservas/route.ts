@@ -179,8 +179,16 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Calcular total
-    const total = reservasProcesadas.reduce((sum, reserva) => sum + reserva.precio, 0);
+    // Calcular totales separados por estado
+    const totalGeneral = reservasProcesadas.reduce((sum, reserva) => sum + reserva.precio, 0);
+    const totalPagado = reservasProcesadas
+      .filter(r => r.estado === 'pagado')
+      .reduce((sum, reserva) => sum + reserva.precio, 0);
+    const totalPendiente = reservasProcesadas
+      .filter(r => r.estado === 'reservado')
+      .reduce((sum, reserva) => sum + reserva.precio, 0);
+
+    console.log(`💰 API Reservas - Totales: General=$${totalGeneral}, Pagado=$${totalPagado}, Pendiente=$${totalPendiente}`);
 
     // Obtener fecha de pago: todas las reservas de un alumno deben tener la misma fecha de pago
     // Usar directamente las reservas de BD (no las procesadas) para obtener fecha_pago
@@ -216,7 +224,9 @@ export async function GET(request: NextRequest) {
       data: {
         alumno: alumnoInfo,
         reservas: reservasProcesadas,
-        total: total,
+        total: totalGeneral,
+        totalPagado: totalPagado,
+        totalPendiente: totalPendiente,
         fechaReserva: reservasProcesadas.length > 0 ? reservasProcesadas[0].fechaReserva : new Date().toLocaleDateString('es-MX'),
         fechaPago: fechaPagoComun
       }

@@ -12,6 +12,7 @@ interface ReservaAPI {
   fila: string;
   asiento: number;
   precio: number;
+  estado?: 'reservado' | 'pagado';
 }
 import { SeatingSection } from './SeatingSection';
 import { ComprobantePDF } from './ComprobantePDF';
@@ -132,9 +133,12 @@ export const Dashboard: React.FC = () => {
             seccion: reserva.zona || reserva.seccion,
             fila: reserva.fila,
             asiento: reserva.asiento,
-            precio: reserva.precio
+            precio: reserva.precio,
+            estado: reserva.estado as 'reservado' | 'pagado'
           })),
           total: result.data.total,
+          totalPagado: result.data.totalPagado,
+          totalPendiente: result.data.totalPendiente,
           fechaReserva: result.data.fechaReserva,
           fechaPago: result.data.fechaPago
         };

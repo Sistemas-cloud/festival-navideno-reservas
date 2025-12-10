@@ -937,23 +937,46 @@ export default function AdminPage() {
                               const dataConsulta = await resConsulta.json();
                               if (resConsulta.ok && dataConsulta.success) {
                                 const todasReservas = (dataConsulta.data || []) as ReservaPorControl[];
-                                // Calcular total sumando los precios de las reservas pendientes
+                                
+                                // SOLO contabilizar boletos PENDIENTES de pago (estado = 'reservado')
+                                // NO se incluyen boletos ya pagados (importante para fechas de reapertura)
                                 const reservasPendientes = todasReservas.filter((r: ReservaPorControl) => r.estado === 'reservado');
+                                const reservasPagadas = todasReservas.filter((r: ReservaPorControl) => r.estado === 'pagado');
+                                
+                                // Calcular total SOLO de boletos pendientes de pago
                                 const total = reservasPendientes.reduce((sum: number, r: ReservaPorControl) => sum + (Number(r.precio) || 0), 0);
-                                setTotalAPagarPago(total);
                                 
-                                // Guardar los boletos reservados para mostrar
-                                setBoletosPago(reservasPendientes);
-                                
-                                // Obtener la fecha de pago (debería ser la misma para todas las reservas)
-                                const reservaConFecha = reservasPendientes.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
-                                if (reservaConFecha && reservaConFecha.fecha_pago) {
-                                  setFechaPagoPago(reservaConFecha.fecha_pago);
-                                } else {
+                                if (reservasPendientes.length === 0) {
+                                  if (reservasPagadas.length > 0) {
+                                    setError(`Este control tiene ${reservasPagadas.length} boleto(s) ya pagado(s), pero no tiene boletos pendientes de pago.`);
+                                  } else {
+                                    setError('No se encontraron reservas para este control');
+                                  }
+                                  setTotalAPagarPago(null);
+                                  setBoletosPago([]);
                                   setFechaPagoPago(null);
+                                } else {
+                                  setTotalAPagarPago(total);
+                                  setBoletosPago(reservasPendientes);
+                                  
+                                  // Obtener la fecha de pago (debería ser la misma para todas las reservas pendientes)
+                                  const reservaConFecha = reservasPendientes.find((r: ReservaPorControl) => r.fecha_pago && r.fecha_pago.trim() !== '');
+                                  if (reservaConFecha && reservaConFecha.fecha_pago) {
+                                    setFechaPagoPago(reservaConFecha.fecha_pago);
+                                  } else {
+                                    setFechaPagoPago(null);
+                                  }
+                                  
+                                  // Mensaje informativo si hay boletos ya pagados
+                                  if (reservasPagadas.length > 0) {
+                                    console.log(`ℹ️ Este control tiene ${reservasPagadas.length} boleto(s) ya pagado(s) (no incluidos en el total a pagar)`);
+                                  }
                                 }
                               } else {
-                                setError('No se encontraron reservas pendientes para este control');
+                                setError('No se encontraron reservas para este control');
+                                setTotalAPagarPago(null);
+                                setBoletosPago([]);
+                                setFechaPagoPago(null);
                               }
                             } catch {
                               setError('Error al consultar reservas');
@@ -1907,51 +1930,134 @@ export default function AdminPage() {
                                 pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
                                 yPosition += 5;
 
-                                // Encabezados de tabla
-                                pdf.setFontSize(10);
-                                pdf.setFont('helvetica', 'bold');
-                                pdf.setTextColor(0, 0, 0);
-                                yPosition = checkAndAddPage(yPosition, 15);
-                                
-                                pdf.text('Control', marginLeft, yPosition);
-                                pdf.text('Nombre', marginLeft + 30, yPosition);
-                                pdf.text('Boletos', marginLeft + 100, yPosition);
-                                pdf.text('Total', marginLeft + 130, yPosition);
-                                yPosition += 3;
-                                
-                                // Línea bajo encabezados
-                                pdf.setDrawColor(150, 150, 150);
-                                pdf.setLineWidth(0.2);
-                                pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
-                                yPosition += 5;
+                                // Listado de familias dividido por fecha de pago
+                                if (corte.fechasPago && corte.fechasPago.length > 0) {
+                                  // Agrupar familias por fecha de pago
+                                  const familiasPorFecha: Record<string, typeof corte.reservas> = {};
+                                  
+                                  for (const reserva of corte.reservas) {
+                                    const fechaKey = reserva.fechaPago || 'Sin fecha asignada';
+                                    if (!familiasPorFecha[fechaKey]) {
+                                      familiasPorFecha[fechaKey] = [];
+                                    }
+                                    familiasPorFecha[fechaKey].push(reserva);
+                                  }
+                                  
+                                  // Mostrar familias por cada fecha de pago
+                                  for (const fechaData of corte.fechasPago) {
+                                    const familiasEnFecha = familiasPorFecha[fechaData.fecha] || [];
+                                    
+                                    if (familiasEnFecha.length > 0) {
+                                      // Título de la fecha
+                                      yPosition = checkAndAddPage(yPosition, 25);
+                                      pdf.setFontSize(11);
+                                      pdf.setFont('helvetica', 'bold');
+                                      pdf.setTextColor(37, 99, 235);
+                                      
+                                      try {
+                                        const fechaFormateada = formatPaymentDate(fechaData.fecha);
+                                        pdf.text(`Familias - ${fechaFormateada} (${familiasEnFecha.length})`, marginLeft, yPosition);
+                                      } catch {
+                                        pdf.text(`Familias - ${fechaData.fecha} (${familiasEnFecha.length})`, marginLeft, yPosition);
+                                      }
+                                      
+                                      yPosition += 8;
+                                      
+                                      // Encabezados de tabla
+                                      pdf.setFontSize(10);
+                                      pdf.setFont('helvetica', 'bold');
+                                      pdf.setTextColor(0, 0, 0);
+                                      yPosition = checkAndAddPage(yPosition, 15);
+                                      
+                                      pdf.text('Control', marginLeft, yPosition);
+                                      pdf.text('Nombre', marginLeft + 30, yPosition);
+                                      pdf.text('Boletos', marginLeft + 100, yPosition);
+                                      pdf.text('Total', marginLeft + 130, yPosition);
+                                      yPosition += 3;
+                                      
+                                      // Línea bajo encabezados
+                                      pdf.setDrawColor(150, 150, 150);
+                                      pdf.setLineWidth(0.2);
+                                      pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+                                      yPosition += 5;
 
-                                // Datos de familias
-                                pdf.setFont('helvetica', 'normal');
-                                pdf.setFontSize(9);
+                                      // Datos de familias de esta fecha
+                                      pdf.setFont('helvetica', 'normal');
+                                      pdf.setFontSize(9);
 
-                                for (const reserva of corte.reservas) {
-                                  yPosition = checkAndAddPage(yPosition, 10);
+                                      for (const reserva of familiasEnFecha) {
+                                        yPosition = checkAndAddPage(yPosition, 10);
+                                        
+                                        pdf.text(reserva.referencia.toString(), marginLeft, yPosition);
+                                        
+                                        // Nombre (truncar si es muy largo)
+                                        const nombreMaxWidth = 60;
+                                        const nombreTexto = pdf.splitTextToSize(reserva.nombre, nombreMaxWidth);
+                                        pdf.text(nombreTexto[0], marginLeft + 30, yPosition);
+                                        
+                                        pdf.text(reserva.boletos.toString(), marginLeft + 100, yPosition);
+                                        pdf.text(`$${reserva.total.toFixed(2)}`, marginLeft + 130, yPosition);
+                                        
+                                        yPosition += 8;
+                                        
+                                        // Si el nombre tiene múltiples líneas, ajustar posición
+                                        if (nombreTexto.length > 1) {
+                                          yPosition += (nombreTexto.length - 1) * 5;
+                                        }
+                                      }
+                                      
+                                      // Espacio entre secciones de fechas
+                                      yPosition += 8;
+                                    }
+                                  }
+                                } else {
+                                  // Fallback: si no hay desglose por fechas, mostrar lista general (compatibilidad)
+                                  // Encabezados de tabla
+                                  pdf.setFontSize(10);
+                                  pdf.setFont('helvetica', 'bold');
+                                  pdf.setTextColor(0, 0, 0);
+                                  yPosition = checkAndAddPage(yPosition, 15);
                                   
-                                  pdf.text(reserva.referencia.toString(), marginLeft, yPosition);
+                                  pdf.text('Control', marginLeft, yPosition);
+                                  pdf.text('Nombre', marginLeft + 30, yPosition);
+                                  pdf.text('Boletos', marginLeft + 100, yPosition);
+                                  pdf.text('Total', marginLeft + 130, yPosition);
+                                  yPosition += 3;
                                   
-                                  // Nombre (truncar si es muy largo)
-                                  const nombreMaxWidth = 60;
-                                  const nombreTexto = pdf.splitTextToSize(reserva.nombre, nombreMaxWidth);
-                                  pdf.text(nombreTexto[0], marginLeft + 30, yPosition);
-                                  
-                                  pdf.text(reserva.boletos.toString(), marginLeft + 100, yPosition);
-                                  pdf.text(`$${reserva.total.toFixed(2)}`, marginLeft + 130, yPosition);
-                                  
-                                  yPosition += 8;
-                                  
-                                  // Si el nombre tiene múltiples líneas, ajustar posición
-                                  if (nombreTexto.length > 1) {
-                                    yPosition += (nombreTexto.length - 1) * 5;
+                                  // Línea bajo encabezados
+                                  pdf.setDrawColor(150, 150, 150);
+                                  pdf.setLineWidth(0.2);
+                                  pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+                                  yPosition += 5;
+
+                                  // Datos de familias
+                                  pdf.setFont('helvetica', 'normal');
+                                  pdf.setFontSize(9);
+
+                                  for (const reserva of corte.reservas) {
+                                    yPosition = checkAndAddPage(yPosition, 10);
+                                    
+                                    pdf.text(reserva.referencia.toString(), marginLeft, yPosition);
+                                    
+                                    // Nombre (truncar si es muy largo)
+                                    const nombreMaxWidth = 60;
+                                    const nombreTexto = pdf.splitTextToSize(reserva.nombre, nombreMaxWidth);
+                                    pdf.text(nombreTexto[0], marginLeft + 30, yPosition);
+                                    
+                                    pdf.text(reserva.boletos.toString(), marginLeft + 100, yPosition);
+                                    pdf.text(`$${reserva.total.toFixed(2)}`, marginLeft + 130, yPosition);
+                                    
+                                    yPosition += 8;
+                                    
+                                    // Si el nombre tiene múltiples líneas, ajustar posición
+                                    if (nombreTexto.length > 1) {
+                                      yPosition += (nombreTexto.length - 1) * 5;
+                                    }
                                   }
                                 }
                                 
                                 // Espacio entre funciones
-                                yPosition += 5;
+                                yPosition += 10;
                               }
 
                               // Pie de página

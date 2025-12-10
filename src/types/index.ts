@@ -78,6 +78,7 @@ export interface AsientoComprobante {
   fila: string;
   asiento: number;
   precio: number;
+  estado?: 'reservado' | 'pagado'; // Estado del asiento (opcional para compatibilidad)
 }
 
 export interface ComprobanteData {
@@ -86,6 +87,8 @@ export interface ComprobanteData {
   funcion: string;
   asientos: AsientoComprobante[];
   total: number;
+  totalPagado?: number; // Total de boletos ya pagados
+  totalPendiente?: number; // Total pendiente de pagar
   fechaReserva: string;
   fechaPago: string;
 }
