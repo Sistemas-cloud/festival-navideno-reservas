@@ -265,11 +265,29 @@ export class AuthModel {
         console.log(`🔍 AuthModel - today: ${today.toLocaleDateString('es-MX')}`);
         
         // Para funciones 2 y 3, verificar si ya pasó la hora de apertura (8 PM)
-        // Importar la función de verificación de hora de apertura
-        const { isAfterOpeningTime } = await import('@/lib/utils/timezone');
-        const yaAbrio = isAfterOpeningTime(fechaAperturaStr, 20); // 20 = 8 PM
+        // Primero verificar si estamos en la fecha de reapertura
+        const { getReopeningDateForFunction } = await import('../config/earlyAccess');
+        const { isAfterOpeningTime, isAfterReopeningTime, getTodayInMonterrey, parseDateString } = await import('@/lib/utils/timezone');
         
-        console.log(`🔍 AuthModel - yaAbrio (8 PM): ${yaAbrio}`);
+        const fechaReaperturaStr = getReopeningDateForFunction(funcionNum);
+        const fechaReapertura = parseDateString(fechaReaperturaStr);
+        const today = getTodayInMonterrey();
+        
+        // Verificar si estamos en la fecha de reapertura (sin importar la hora)
+        const estamosEnFechaReapertura = today.getTime() >= fechaReapertura.getTime();
+        
+        // Si estamos en la fecha de reapertura, verificar si ya pasaron las 8 PM
+        // Si no estamos en reapertura, verificar la fecha de apertura original
+        let yaAbrio: boolean;
+        if (estamosEnFechaReapertura) {
+          // Estamos en la fecha de reapertura, verificar si ya pasaron las 8 PM
+          yaAbrio = isAfterReopeningTime(fechaReaperturaStr, 20);
+          console.log(`🔍 AuthModel - En fecha de reapertura: fechaReapertura=${fechaReaperturaStr}, yaAbrio (8 PM)=${yaAbrio}`);
+        } else {
+          // No estamos en reapertura, verificar fecha de apertura original
+          yaAbrio = isAfterOpeningTime(fechaAperturaStr, 20); // 20 = 8 PM
+          console.log(`🔍 AuthModel - Apertura original: fechaApertura=${fechaAperturaStr}, yaAbrio (8 PM)=${yaAbrio}`);
+        }
         
         // Solo denegar acceso si NO tiene acceso anticipado Y aún no ha pasado la hora de apertura (8 PM)
         if (!tieneAccesoAnticipado && !yaAbrio) {

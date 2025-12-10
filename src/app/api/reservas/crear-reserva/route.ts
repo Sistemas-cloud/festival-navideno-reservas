@@ -71,9 +71,29 @@ async function validateReservationAccess(alumnoRef: number): Promise<{
   const tieneAccesoAnticipado = hasEarlyAccess(alumnoRef);
   const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
   
-  // Solo denegar acceso si NO tiene acceso anticipado Y aún no ha pasado la hora de apertura (8 PM)
-  const { isAfterOpeningTime } = await import('@/lib/utils/timezone');
-  const yaAbrio = isAfterOpeningTime(fechaAperturaStr, 20); // 20 = 8 PM
+  // Verificar si estamos en la fecha de reapertura
+  const { getReopeningDateForFunction } = await import('@/lib/config/earlyAccess');
+  const { isAfterOpeningTime, isAfterReopeningTime, getTodayInMonterrey, parseDateString } = await import('@/lib/utils/timezone');
+  
+  const fechaReaperturaStr = getReopeningDateForFunction(funcionNum);
+  const fechaReapertura = parseDateString(fechaReaperturaStr);
+  const today = getTodayInMonterrey();
+  
+  // Verificar si estamos en la fecha de reapertura (sin importar la hora)
+  const estamosEnFechaReapertura = today.getTime() >= fechaReapertura.getTime();
+  
+  // Si estamos en la fecha de reapertura, verificar si ya pasaron las 8 PM
+  // Si no estamos en reapertura, verificar la fecha de apertura original
+  let yaAbrio: boolean;
+  if (estamosEnFechaReapertura) {
+    // Estamos en la fecha de reapertura, verificar si ya pasaron las 8 PM
+    yaAbrio = isAfterReopeningTime(fechaReaperturaStr, 20);
+    console.log(`🔍 Validación de acceso para reservar - En fecha de reapertura: fechaReapertura=${fechaReaperturaStr}, yaAbrio (8 PM)=${yaAbrio}`);
+  } else {
+    // No estamos en reapertura, verificar fecha de apertura original
+    yaAbrio = isAfterOpeningTime(fechaAperturaStr, 20); // 20 = 8 PM
+    console.log(`🔍 Validación de acceso para reservar - Apertura original: fechaApertura=${fechaAperturaStr}, yaAbrio (8 PM)=${yaAbrio}`);
+  }
 
   if (!tieneAccesoAnticipado && !yaAbrio) {
     const nombresFunciones: { [key: number]: string } = {
