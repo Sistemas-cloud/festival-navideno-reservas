@@ -264,23 +264,26 @@ export class AuthModel {
         console.log(`🔍 AuthModel - fechaApertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
         console.log(`🔍 AuthModel - today: ${today.toLocaleDateString('es-MX')}`);
         
-        // Solo denegar acceso si NO tiene acceso anticipado Y la fecha actual es ANTES de la fecha de apertura
-        // Si la fecha es igual o posterior, permitir acceso
-        const fechaAunNoHaPasado = today.getTime() < fechaApertura.getTime();
-        console.log(`🔍 AuthModel - fechaAunNoHaPasado: ${fechaAunNoHaPasado}`);
+        // Para funciones 2 y 3, verificar si ya pasó la hora de apertura (8 PM)
+        // Importar la función de verificación de hora de apertura
+        const { isAfterOpeningTime } = await import('@/lib/utils/timezone');
+        const yaAbrio = isAfterOpeningTime(fechaAperturaStr, 20); // 20 = 8 PM
         
-        if (!tieneAccesoAnticipado && fechaAunNoHaPasado) {
+        console.log(`🔍 AuthModel - yaAbrio (8 PM): ${yaAbrio}`);
+        
+        // Solo denegar acceso si NO tiene acceso anticipado Y aún no ha pasado la hora de apertura (8 PM)
+        if (!tieneAccesoAnticipado && !yaAbrio) {
           const fechaAperturaFormateada = fechaApertura.toLocaleDateString('es-MX', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
             timeZone: 'America/Monterrey'
           });
-          console.log(`🚫 Acceso denegado: El sistema estará disponible a partir del ${fechaAperturaFormateada} (medianoche hora de Monterrey) para la ${nombreFuncion}`);
+          console.log(`🚫 Acceso denegado: El sistema estará disponible a partir del ${fechaAperturaFormateada} a las 8:00 PM (hora de Monterrey) para la ${nombreFuncion}`);
           console.log(`📅 Fecha actual en Monterrey: ${today.toLocaleDateString('es-MX')}, Fecha de apertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
           return {
             success: false,
-            message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} (medianoche hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha.`,
+            message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} a las 8:00 PM (hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha y hora.`,
             isAccessDeniedByDate: true,
             fechaApertura: fechaAperturaStr,
             nombreFuncion: nombreFuncion
@@ -291,7 +294,7 @@ export class AuthModel {
         if (tieneAccesoAnticipado) {
           console.log(`✅ Acceso anticipado concedido para control ${alumnoRef}`);
         } else {
-          console.log(`✅ Acceso permitido: Fecha de apertura (${fechaAperturaStr}) ya pasó o es hoy`);
+          console.log(`✅ Acceso permitido: Hora de apertura (8 PM del ${fechaAperturaStr}) ya pasó`);
           console.log(`📅 Fecha actual en Monterrey: ${today.toLocaleDateString('es-MX')}, Fecha de apertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
         }
       }

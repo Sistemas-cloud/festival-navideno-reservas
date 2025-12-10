@@ -67,18 +67,15 @@ async function validateReservationAccess(alumnoRef: number): Promise<{
     return { hasAccess: true };
   }
 
-  // Para funciones 2 y 3, verificar acceso anticipado o fecha de apertura
+  // Para funciones 2 y 3, verificar acceso anticipado o fecha/hora de apertura (8 PM)
   const tieneAccesoAnticipado = hasEarlyAccess(alumnoRef);
   const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
   
-  // Solo denegar acceso si NO tiene acceso anticipado Y la fecha actual es ANTES de la fecha de apertura
-  // Si la fecha es igual o posterior, permitir acceso
-  const { getTodayInMonterrey, parseDateString } = await import('@/lib/utils/timezone');
-  const today = getTodayInMonterrey();
-  const fechaApertura = parseDateString(fechaAperturaStr);
-  const fechaAunNoHaPasado = today.getTime() < fechaApertura.getTime();
+  // Solo denegar acceso si NO tiene acceso anticipado Y aún no ha pasado la hora de apertura (8 PM)
+  const { isAfterOpeningTime } = await import('@/lib/utils/timezone');
+  const yaAbrio = isAfterOpeningTime(fechaAperturaStr, 20); // 20 = 8 PM
 
-  if (!tieneAccesoAnticipado && fechaAunNoHaPasado) {
+  if (!tieneAccesoAnticipado && !yaAbrio) {
     const nombresFunciones: { [key: number]: string } = {
       1: '1ra Función',
       2: '2da Función',
@@ -95,10 +92,10 @@ async function validateReservationAccess(alumnoRef: number): Promise<{
       timeZone: 'America/Monterrey'
     });
 
-    console.log(`🚫 Validación de acceso para reservar: Usuario ${alumnoRef} NO tiene acceso - fecha de apertura: ${fechaAperturaStr}`);
+    console.log(`🚫 Validación de acceso para reservar: Usuario ${alumnoRef} NO tiene acceso - fecha/hora de apertura: ${fechaAperturaStr} a las 8 PM`);
     return {
       hasAccess: false,
-      message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} (medianoche hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha.`,
+      message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} a las 8:00 PM (hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha y hora.`,
       fechaApertura: fechaAperturaStr,
       nombreFuncion: nombreFuncion
     };

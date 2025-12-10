@@ -60,6 +60,34 @@ export function isBeforeOpeningDate(openingDateStr: string): boolean {
 }
 
 /**
+ * Verifica si la fecha/hora actual en Monterrey ha pasado la hora de apertura
+ * La apertura puede ser a una hora específica (por defecto 20:00 / 8 PM) del día especificado
+ * Para funciones 2 y 3, el portal se abre a las 8 PM del día de apertura
+ * @param openingDateStr Fecha de apertura en formato YYYY-MM-DD
+ * @param openingHour Hora de apertura (0-23), por defecto 20 (8 PM) para funciones 2 y 3
+ */
+export function isAfterOpeningTime(openingDateStr: string, openingHour: number = 20): boolean {
+  const [openYear, openMonth, openDay] = openingDateStr.split('-').map(Number);
+  const now = getDateTimeInMonterrey();
+  
+  // Comparar primero el año
+  if (now.year > openYear) return true;
+  if (now.year < openYear) return false;
+  
+  // Comparar el mes
+  if (now.month > openMonth) return true;
+  if (now.month < openMonth) return false;
+  
+  // Comparar el día y hora
+  if (now.day > openDay) return true;
+  if (now.day < openDay) return false;
+  
+  // Si es el mismo día, verificar si ya pasó la hora de apertura
+  // Si la hora actual es >= a la hora de apertura, ya abrió
+  return now.hour >= openingHour;
+}
+
+/**
  * Compara si la fecha actual en Monterrey es igual o posterior a la fecha de cierre
  * @param closingDateStr Fecha de cierre en formato YYYY-MM-DD
  */

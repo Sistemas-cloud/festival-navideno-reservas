@@ -42,7 +42,8 @@ export function hasEarlyAccess(control: number): boolean {
 
 /**
  * Fechas de apertura por función (en formato YYYY-MM-DD)
- * El sistema estará cerrado para el público hasta estas fechas a medianoche en hora de Monterrey
+ * - Función 1: Se abre a medianoche (00:00) en hora de Monterrey
+ * - Funciones 2 y 3: Se abren a las 20:00 (8 PM) en hora de Monterrey
  */
 export const OPENING_DATES = {
   FUNCION_1: '2025-11-07',

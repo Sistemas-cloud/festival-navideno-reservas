@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserData, HermanosData } from '@/types';
 import { hasEarlyAccess, getOpeningDateForFunction } from '@/lib/config/earlyAccess';
-import { getTodayInMonterrey, parseDateString } from '@/lib/utils/timezone';
+import { getTodayInMonterrey, isAfterOpeningTime } from '@/lib/utils/timezone';
 
 /**
  * Valida si un usuario tiene acceso al sistema basándose en:
@@ -48,20 +48,16 @@ function validateUserAccess(userData: UserData): boolean {
     return true;
   }
 
-  // Para funciones 2 y 3, verificar acceso anticipado o fecha de apertura
+  // Para funciones 2 y 3, verificar acceso anticipado o fecha/hora de apertura (8 PM)
   const controlNumber = Number(userData.alumnoRef);
   const tieneAccesoAnticipado = hasEarlyAccess(controlNumber);
   const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
 
-  // Solo denegar acceso si NO tiene acceso anticipado Y la fecha actual es ANTES de la fecha de apertura
-  // Si la fecha es igual o posterior, permitir acceso
-  const today = getTodayInMonterrey();
-  const fechaApertura = parseDateString(fechaAperturaStr);
-  const fechaAunNoHaPasado = today.getTime() < fechaApertura.getTime();
+  // Solo denegar acceso si NO tiene acceso anticipado Y aún no ha pasado la hora de apertura (8 PM)
+  const yaAbrio = isAfterOpeningTime(fechaAperturaStr, 20); // 20 = 8 PM
 
-  if (!tieneAccesoAnticipado && fechaAunNoHaPasado) {
-    console.log(`🚫 Validación de acceso: Usuario ${userData.alumnoRef} no tiene acceso - fecha de apertura: ${fechaAperturaStr}`);
-    console.log(`📅 Fecha actual: ${today.toLocaleDateString('es-MX')}, Fecha de apertura: ${fechaApertura.toLocaleDateString('es-MX')}`);
+  if (!tieneAccesoAnticipado && !yaAbrio) {
+    console.log(`🚫 Validación de acceso: Usuario ${userData.alumnoRef} no tiene acceso - fecha/hora de apertura: ${fechaAperturaStr} a las 8 PM`);
     return false;
   }
 
