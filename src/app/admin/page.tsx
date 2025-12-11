@@ -94,6 +94,33 @@ export default function AdminPage() {
   const [loadingCorteCaja, setLoadingCorteCaja] = useState(false);
   const [funcionAnterior, setFuncionAnterior] = useState<number>(1);
   const [funcionReporte, setFuncionReporte] = useState<number | null>(null);
+  
+  // Estados para la nueva sección de pagos por fecha
+  const [funcionPagoFecha, setFuncionPagoFecha] = useState<number | null>(null);
+  const [loadingPagoFecha, setLoadingPagoFecha] = useState(false);
+  const [pagosFechaData, setPagosFechaData] = useState<{
+    pagados: Array<{
+      referencia: number;
+      nombreCompleto: string;
+      asientos: string;
+      zonas: string;
+      total: number;
+      cantidadBoletos: number;
+      estado: 'reservado' | 'pagado';
+    }>;
+    pendientes: Array<{
+      referencia: number;
+      nombreCompleto: string;
+      asientos: string;
+      zonas: string;
+      total: number;
+      cantidadBoletos: number;
+      estado: 'reservado' | 'pagado';
+    }>;
+    totalPagados: number;
+    totalPendientes: number;
+    fechaPago: string;
+  } | null>(null);
 
   const getAdminHeaders = useCallback((includeContentType: boolean = true) => {
     if (!currentUser) return {};
@@ -2099,6 +2126,243 @@ export default function AdminPage() {
                             </>
                           )}
                         </button>
+                      </div>
+
+                      {/* Nueva Sección: Pagos por Fecha 2025-12-12 */}
+                      <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200 mt-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-1">Pagos del 12 de Diciembre</h3>
+                            <p className="text-sm text-gray-600">
+                              Listado de alumnos con fecha de pago 2025-12-12, separados por estado de pago
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Selector de Función */}
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Seleccionar función:
+                          </label>
+                          <select
+                            value={funcionPagoFecha === null ? '' : funcionPagoFecha.toString()}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFuncionPagoFecha(val === '' ? null : parseInt(val));
+                              setPagosFechaData(null);
+                            }}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          >
+                            <option value="">Seleccione una función</option>
+                            <option value="2">📚 Función 2 - Primaria</option>
+                            <option value="3">🎓 Función 3 - Secundaria</option>
+                          </select>
+                        </div>
+
+                        {/* Botón para cargar datos */}
+                        <button
+                          type="button"
+                          disabled={loadingPagoFecha || !funcionPagoFecha}
+                          onClick={async () => {
+                            setError(null);
+                            setLoadingPagoFecha(true);
+                            try {
+                              if (!currentUser) {
+                                setError('No hay usuario autenticado. Por favor, inicia sesión nuevamente.');
+                                setLoadingPagoFecha(false);
+                                return;
+                              }
+
+                              const headers = getAdminHeaders(false);
+                              
+                              if (!headers['x-admin-user'] || !headers['x-admin-pass']) {
+                                setError('Error de autenticación. Por favor, cierra sesión e inicia sesión nuevamente.');
+                                setLoadingPagoFecha(false);
+                                return;
+                              }
+
+                              const res = await fetch(`/api/admin/reportes/pagos-fecha?funcion=${funcionPagoFecha}&fecha_pago=2025-12-12`, {
+                                method: 'GET',
+                                headers: headers,
+                              });
+                              
+                              if (!res.ok) {
+                                try {
+                                  const errorData = await res.json();
+                                  setError(errorData.message || 'Error al obtener datos');
+                                } catch {
+                                  setError('Error al obtener datos');
+                                }
+                                return;
+                              }
+
+                              const responseData = await res.json();
+                              if (!responseData.success) {
+                                setError(responseData.message || 'Error al obtener datos');
+                                return;
+                              }
+
+                              setPagosFechaData(responseData.data);
+                            } catch (err) {
+                              console.error('Error:', err);
+                              setError('Error al obtener datos');
+                            } finally {
+                              setLoadingPagoFecha(false);
+                            }
+                          }}
+                          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 flex items-center justify-center gap-2 mb-4"
+                        >
+                          {loadingPagoFecha ? (
+                            <>
+                              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Cargando...
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              Cargar Listado
+                            </>
+                          )}
+                        </button>
+
+                        {/* Mostrar datos */}
+                        {pagosFechaData && (
+                          <div className="mt-6 space-y-6">
+                            {/* Resumen */}
+                            <div className="bg-white rounded-lg p-4 border border-gray-200">
+                              <div className="grid grid-cols-3 gap-4 text-center">
+                                <div>
+                                  <p className="text-sm text-gray-600">Total Pagados</p>
+                                  <p className="text-2xl font-bold text-green-600">{pagosFechaData.totalPagados}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-gray-600">Total Pendientes</p>
+                                  <p className="text-2xl font-bold text-orange-600">{pagosFechaData.totalPendientes}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-gray-600">Total General</p>
+                                  <p className="text-2xl font-bold text-blue-600">{pagosFechaData.totalPagados + pagosFechaData.totalPendientes}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Lista de Pagados */}
+                            {pagosFechaData.pagados.length > 0 && (
+                              <div>
+                                <h4 className="text-md font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                  <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
+                                    ✓ PAGADOS
+                                  </span>
+                                  <span className="text-gray-500">({pagosFechaData.pagados.length} alumnos)</span>
+                                </h4>
+                                <div className="bg-white rounded-lg border border-green-200 overflow-hidden">
+                                  <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                      <thead className="bg-green-50">
+                                        <tr>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Control</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Nombre</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Asientos</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Zona</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Boletos</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Total</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="bg-white divide-y divide-gray-200">
+                                        {pagosFechaData.pagados.map((alumno, index) => (
+                                          <tr key={`${alumno.referencia}-${index}`} className="bg-green-50/50 hover:bg-green-50">
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                              {alumno.referencia}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-700 font-medium">
+                                              {alumno.nombreCompleto}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-600">
+                                              {alumno.asientos}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                              {alumno.zonas}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-center">
+                                              {alumno.cantidadBoletos}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-700">
+                                              ${alumno.total.toFixed(2)}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Lista de Pendientes */}
+                            {pagosFechaData.pendientes.length > 0 && (
+                              <div>
+                                <h4 className="text-md font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                  <span className="inline-flex items-center rounded-full bg-orange-100 px-3 py-1 text-sm font-medium text-orange-800">
+                                    ⏳ PENDIENTES
+                                  </span>
+                                  <span className="text-gray-500">({pagosFechaData.pendientes.length} alumnos)</span>
+                                </h4>
+                                <div className="bg-white rounded-lg border border-orange-200 overflow-hidden">
+                                  <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                      <thead className="bg-orange-50">
+                                        <tr>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Control</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Nombre</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Asientos</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Zona</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Boletos</th>
+                                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Total</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="bg-white divide-y divide-gray-200">
+                                        {pagosFechaData.pendientes.map((alumno, index) => (
+                                          <tr key={`${alumno.referencia}-${index}`} className="bg-orange-50/50 hover:bg-orange-50">
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                              {alumno.referencia}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-700 font-medium italic">
+                                              {alumno.nombreCompleto}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-600">
+                                              {alumno.asientos}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                              {alumno.zonas}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 text-center">
+                                              {alumno.cantidadBoletos}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-orange-700">
+                                              ${alumno.total.toFixed(2)}
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Mensaje si no hay datos */}
+                            {pagosFechaData.pagados.length === 0 && pagosFechaData.pendientes.length === 0 && (
+                              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+                                <p className="text-yellow-800">No se encontraron reservas con fecha de pago 2025-12-12 para esta función.</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
