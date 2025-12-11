@@ -2055,7 +2055,7 @@ export default function AdminPage() {
                                         
                                         // En modo detallado, mostrar boletos específicos en lugar de cantidad
                                         if (modoDetalladoCorteCaja && reserva.boletosDetalle && reserva.boletosDetalle.length > 0) {
-                                          const boletosStr = reserva.boletosDetalle.map(b => `${b.fila}-${b.asiento}`).join(', ');
+                                          const boletosStr = reserva.boletosDetalle.map((b: { fila: string; asiento: number }) => `${b.fila}-${b.asiento}`).join(', ');
                                           const boletosTexto = pdf.splitTextToSize(boletosStr, 35); // Ancho más pequeño para evitar empalme
                                           pdf.setFontSize(8);
                                           pdf.setTextColor(60, 60, 60);
@@ -2135,7 +2135,7 @@ export default function AdminPage() {
                                         
                                         // En modo detallado, mostrar boletos específicos
                                         if (modoDetalladoCorteCaja && reserva.boletosDetalle && reserva.boletosDetalle.length > 0) {
-                                          const boletosStr = reserva.boletosDetalle.map(b => `${b.fila}-${b.asiento}`).join(', ');
+                                          const boletosStr = reserva.boletosDetalle.map((b: { fila: string; asiento: number }) => `${b.fila}-${b.asiento}`).join(', ');
                                           const boletosTexto = pdf.splitTextToSize(boletosStr, 35); // Ancho más pequeño para evitar empalme
                                           pdf.setFontSize(8);
                                           pdf.setTextColor(60, 60, 60);
@@ -2230,7 +2230,7 @@ export default function AdminPage() {
                                         
                                         // Boletos específicos (fila-asiento)
                                         if (alumno.boletosDetalle && alumno.boletosDetalle.length > 0) {
-                                          const boletosStr = alumno.boletosDetalle.map(b => `${b.fila}-${b.asiento}`).join(', ');
+                                          const boletosStr = alumno.boletosDetalle.map((b: { fila: string; asiento: number }) => `${b.fila}-${b.asiento}`).join(', ');
                                           const boletosTexto = pdf.splitTextToSize(boletosStr, 30); // Ancho más pequeño para evitar empalme
                                           
                                           // Mostrar todas las líneas de boletos
