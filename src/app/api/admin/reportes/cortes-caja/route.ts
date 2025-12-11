@@ -87,15 +87,16 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseClient();
 
-    // Parámetro opcional: filtrar por función específica (1, 2, o 3)
+    // Parámetros opcionales: filtrar por función específica y modo detallado
     const funcionParam = req.nextUrl.searchParams.get('funcion');
     const funcionFiltro = funcionParam ? parseInt(funcionParam) : null;
+    const modoDetallado = req.nextUrl.searchParams.get('detallado') === 'true';
 
     // Obtener TODAS las reservas pagadas (incluyendo fila y zona para análisis)
     // IMPORTANTE: aumentar el límite por defecto de Supabase (1000 filas) para no truncar resultados.
     let query = supabase
       .from('reservas')
-      .select('referencia, nivel, precio, fecha_pago, estado, zona, fila')
+      .select('referencia, nivel, precio, fecha_pago, estado, zona, fila, asiento')
       .eq('estado', 'pagado');
 
     // Si se especifica una función, filtrar solo esa función en la consulta de Supabase
@@ -227,6 +228,7 @@ export async function GET(req: NextRequest) {
         boletos: number;
         total: number;
         fechaPago: string | null;
+        boletosDetalle?: Array<{ fila: string; asiento: number }>; // Solo en modo detallado
       }>;
       fechasPago: Array<{
         fecha: string;
@@ -238,6 +240,12 @@ export async function GET(req: NextRequest) {
         zona: string;
         boletos: number;
         total: number;
+        alumnos?: Array<{
+          referencia: number;
+          nombre: string;
+          boletos: number;
+          total: number;
+        }>;
       }>;
     }> = {};
 
@@ -276,7 +284,18 @@ export async function GET(req: NextRequest) {
 
         const reservasPorFecha = new Map<string, { boletos: number; total: number; familias: Set<number> }>();
         const reservasPorZona = new Map<string, { boletos: number; total: number }>();
-        const reservasPorReferencia = new Map<number, { boletos: number; total: number; fechaPago: string | null }>();
+        const reservasPorReferencia = new Map<number, { 
+          boletos: number; 
+          total: number; 
+          fechaPago: string | null;
+          boletosDetalle?: Array<{ fila: string; asiento: number }>; // Para modo detallado
+        }>();
+        // Para modo detallado: agrupar por zona y referencia con detalles de boletos
+        const reservasPorZonaYReferencia = new Map<string, Map<number, { 
+          boletos: number; 
+          total: number;
+          boletosDetalle: Array<{ fila: string; asiento: number }>;
+        }>>();
         
         // === PASO 2: sumar directamente cada boleto de esta función ===
         reservasNivel.forEach(r => {
@@ -306,13 +325,39 @@ export async function GET(req: NextRequest) {
           zonaData.boletos += 1;
           zonaData.total += precio;
           
+          // Para modo detallado: agrupar por zona y referencia con detalles de boletos
+          if (modoDetallado) {
+            if (!reservasPorZonaYReferencia.has(zonaClave)) {
+              reservasPorZonaYReferencia.set(zonaClave, new Map());
+            }
+            const zonaRefMap = reservasPorZonaYReferencia.get(zonaClave)!;
+            if (!zonaRefMap.has(r.referencia)) {
+              zonaRefMap.set(r.referencia, { boletos: 0, total: 0, boletosDetalle: [] });
+            }
+            const refData = zonaRefMap.get(r.referencia)!;
+            refData.boletos += 1;
+            refData.total += precio;
+            if (r.fila && r.asiento) {
+              refData.boletosDetalle.push({ fila: r.fila, asiento: r.asiento });
+            }
+          }
+          
           // Agrupar por referencia solo para la lista de familias (no para totales)
           if (!reservasPorReferencia.has(r.referencia)) {
-            reservasPorReferencia.set(r.referencia, { boletos: 0, total: 0, fechaPago: r.fecha_pago });
+            reservasPorReferencia.set(r.referencia, { 
+              boletos: 0, 
+              total: 0, 
+              fechaPago: r.fecha_pago,
+              boletosDetalle: modoDetallado ? [] : undefined
+            });
           }
           const refData = reservasPorReferencia.get(r.referencia)!;
           refData.boletos += 1;
           refData.total += precio;
+          // En modo detallado, guardar detalles de cada boleto
+          if (modoDetallado && refData.boletosDetalle && r.fila && r.asiento) {
+            refData.boletosDetalle.push({ fila: r.fila, asiento: r.asiento });
+          }
           
           // Logs específicos solo para función 2 (debug más fino, pero sin afectar cálculos)
           if (i === 2) {
@@ -391,40 +436,168 @@ export async function GET(req: NextRequest) {
         
         // Agregar reservas agrupadas por referencia solo para la lista (sin afectar totales)
         for (const [referencia, refData] of reservasPorReferencia.entries()) {
+          // Ordenar boletos por fila y asiento en modo detallado
+          let boletosDetalle = refData.boletosDetalle;
+          if (modoDetallado && boletosDetalle && boletosDetalle.length > 0) {
+            boletosDetalle = [...boletosDetalle].sort((a, b) => {
+              if (a.fila !== b.fila) {
+                return a.fila.localeCompare(b.fila);
+              }
+              return a.asiento - b.asiento;
+            });
+          }
+          
           cortesPorFuncion[i].reservas.push({
             referencia: referencia,
             nombre: nombresMap.get(referencia) || `Control ${referencia}`,
             boletos: refData.boletos,
             total: refData.total,
-            fechaPago: refData.fechaPago
+            fechaPago: refData.fechaPago,
+            boletosDetalle: modoDetallado ? boletosDetalle : undefined
           });
         }
         
         // Crear array de zonas con orden específico
         const ordenZonas = ['ZONA ORO', 'ZONA PLATA', 'BRONCE (PALCOS)', 'BRONCE (BALCÓN)', 'Sin zona asignada'];
-        const zonasOrdenadas: Array<{ zona: string; boletos: number; total: number }> = [];
-        const otrasZonas: Array<{ zona: string; boletos: number; total: number }> = [];
+        const zonasOrdenadas: Array<{
+          zona: string;
+          boletos: number;
+          total: number;
+          alumnos?: Array<{ 
+            referencia: number; 
+            nombre: string; 
+            boletos: number; 
+            total: number;
+            boletosDetalle: Array<{ fila: string; asiento: number }>;
+          }>;
+        }> = [];
+        const otrasZonas: Array<{
+          zona: string;
+          boletos: number;
+          total: number;
+          alumnos?: Array<{ 
+            referencia: number; 
+            nombre: string; 
+            boletos: number; 
+            total: number;
+            boletosDetalle: Array<{ fila: string; asiento: number }>;
+          }>;
+        }> = [];
         
         // Agregar zonas en el orden especificado
         for (const zonaOrden of ordenZonas) {
           if (reservasPorZona.has(zonaOrden)) {
             const data = reservasPorZona.get(zonaOrden)!;
-            zonasOrdenadas.push({
+            const zonaInfo: {
+              zona: string;
+              boletos: number;
+              total: number;
+              alumnos?: Array<{ 
+            referencia: number; 
+            nombre: string; 
+            boletos: number; 
+            total: number;
+            boletosDetalle: Array<{ fila: string; asiento: number }>;
+          }>;
+            } = {
               zona: zonaOrden,
               boletos: data.boletos,
               total: data.total
-            });
+            };
+            
+            // Si modo detallado está activo, agregar información de alumnos por zona
+            if (modoDetallado && reservasPorZonaYReferencia.has(zonaOrden)) {
+              const alumnosEnZona: Array<{ 
+                referencia: number; 
+                nombre: string; 
+                boletos: number; 
+                total: number;
+                boletosDetalle: Array<{ fila: string; asiento: number }>;
+              }> = [];
+              const refsEnZona = reservasPorZonaYReferencia.get(zonaOrden)!;
+              
+              for (const [referencia, refData] of refsEnZona.entries()) {
+                // Ordenar boletos por fila y asiento
+                const boletosOrdenados = [...refData.boletosDetalle].sort((a, b) => {
+                  if (a.fila !== b.fila) {
+                    return a.fila.localeCompare(b.fila);
+                  }
+                  return a.asiento - b.asiento;
+                });
+                
+                alumnosEnZona.push({
+                  referencia: referencia,
+                  nombre: nombresMap.get(referencia) || `Control ${referencia}`,
+                  boletos: refData.boletos,
+                  total: refData.total,
+                  boletosDetalle: boletosOrdenados
+                });
+              }
+              
+              // Ordenar alumnos por referencia
+              alumnosEnZona.sort((a, b) => a.referencia - b.referencia);
+              zonaInfo.alumnos = alumnosEnZona;
+            }
+            
+            zonasOrdenadas.push(zonaInfo);
           }
         }
         
         // Agregar otras zonas que no estén en el orden especificado
         for (const [zona, data] of reservasPorZona.entries()) {
           if (!ordenZonas.includes(zona)) {
-            otrasZonas.push({
+            const zonaInfo: {
+              zona: string;
+              boletos: number;
+              total: number;
+              alumnos?: Array<{ 
+            referencia: number; 
+            nombre: string; 
+            boletos: number; 
+            total: number;
+            boletosDetalle: Array<{ fila: string; asiento: number }>;
+          }>;
+            } = {
               zona: zona,
               boletos: data.boletos,
               total: data.total
-            });
+            };
+            
+            // Si modo detallado está activo, agregar información de alumnos por zona
+            if (modoDetallado && reservasPorZonaYReferencia.has(zona)) {
+              const alumnosEnZona: Array<{ 
+                referencia: number; 
+                nombre: string; 
+                boletos: number; 
+                total: number;
+                boletosDetalle: Array<{ fila: string; asiento: number }>;
+              }> = [];
+              const refsEnZona = reservasPorZonaYReferencia.get(zona)!;
+              
+              for (const [referencia, refData] of refsEnZona.entries()) {
+                // Ordenar boletos por fila y asiento
+                const boletosOrdenados = [...refData.boletosDetalle].sort((a, b) => {
+                  if (a.fila !== b.fila) {
+                    return a.fila.localeCompare(b.fila);
+                  }
+                  return a.asiento - b.asiento;
+                });
+                
+                alumnosEnZona.push({
+                  referencia: referencia,
+                  nombre: nombresMap.get(referencia) || `Control ${referencia}`,
+                  boletos: refData.boletos,
+                  total: refData.total,
+                  boletosDetalle: boletosOrdenados
+                });
+              }
+              
+              // Ordenar alumnos por referencia
+              alumnosEnZona.sort((a, b) => a.referencia - b.referencia);
+              zonaInfo.alumnos = alumnosEnZona;
+            }
+            
+            otrasZonas.push(zonaInfo);
           }
         }
         

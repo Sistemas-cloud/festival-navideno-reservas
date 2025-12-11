@@ -94,6 +94,7 @@ export default function AdminPage() {
   const [loadingCorteCaja, setLoadingCorteCaja] = useState(false);
   const [funcionAnterior, setFuncionAnterior] = useState<number>(1);
   const [funcionReporte, setFuncionReporte] = useState<number | null>(null);
+  const [modoDetalladoCorteCaja, setModoDetalladoCorteCaja] = useState<boolean>(false);
   
   // Estados para la nueva sección de pagos por fecha
   const [funcionPagoFecha, setFuncionPagoFecha] = useState<number | null>(null);
@@ -1686,6 +1687,24 @@ export default function AdminPage() {
                           </select>
                         </div>
 
+                        {/* Checkbox para modo detallado */}
+                        <div className="mb-4">
+                          <label className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={modoDetalladoCorteCaja}
+                              onChange={(e) => setModoDetalladoCorteCaja(e.target.checked)}
+                              className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                            />
+                            <span className="text-sm font-medium text-gray-700">
+                              📋 Modo detallado por zonas (mostrar alumnos y boletos por zona)
+                            </span>
+                          </label>
+                          <p className="text-xs text-gray-500 ml-6 mt-1">
+                            Cuando está activo, el reporte mostrará qué alumnos tienen boletos en cada zona
+                          </p>
+                        </div>
+
                         <div className="flex gap-3 mb-4">
                         <button
                           type="button"
@@ -1770,8 +1789,15 @@ export default function AdminPage() {
                                 return;
                               }
 
-                              const funcionParam = funcionReporte !== null ? `?funcion=${funcionReporte}` : '';
-                              const res = await fetch(`/api/admin/reportes/cortes-caja${funcionParam}`, {
+                              let queryParams = [];
+                              if (funcionReporte !== null) {
+                                queryParams.push(`funcion=${funcionReporte}`);
+                              }
+                              if (modoDetalladoCorteCaja) {
+                                queryParams.push('detallado=true');
+                              }
+                              const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+                              const res = await fetch(`/api/admin/reportes/cortes-caja${queryString}`, {
                                 method: 'GET',
                                 headers: headers,
                               });
@@ -1957,8 +1983,9 @@ export default function AdminPage() {
                                 pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
                                 yPosition += 5;
 
-                                // Listado de familias dividido por fecha de pago
-                                if (corte.fechasPago && corte.fechasPago.length > 0) {
+                                // Listado de familias dividido por fecha de pago (solo si NO está en modo detallado)
+                                // En modo detallado, la información se muestra por zonas
+                                if (!modoDetalladoCorteCaja && corte.fechasPago && corte.fechasPago.length > 0) {
                                   // Agrupar familias por fecha de pago
                                   const familiasPorFecha: Record<string, typeof corte.reservas> = {};
                                   
@@ -1998,7 +2025,11 @@ export default function AdminPage() {
                                       
                                       pdf.text('Control', marginLeft, yPosition);
                                       pdf.text('Nombre', marginLeft + 30, yPosition);
-                                      pdf.text('Boletos', marginLeft + 100, yPosition);
+                                      if (modoDetalladoCorteCaja) {
+                                        pdf.text('Boletos (Fila-Asiento)', marginLeft + 100, yPosition);
+                                      } else {
+                                        pdf.text('Boletos', marginLeft + 100, yPosition);
+                                      }
                                       pdf.text('Total', marginLeft + 130, yPosition);
                                       yPosition += 3;
                                       
@@ -2022,8 +2053,35 @@ export default function AdminPage() {
                                         const nombreTexto = pdf.splitTextToSize(reserva.nombre, nombreMaxWidth);
                                         pdf.text(nombreTexto[0], marginLeft + 30, yPosition);
                                         
-                                        pdf.text(reserva.boletos.toString(), marginLeft + 100, yPosition);
-                                        pdf.text(`$${reserva.total.toFixed(2)}`, marginLeft + 130, yPosition);
+                                        // En modo detallado, mostrar boletos específicos en lugar de cantidad
+                                        if (modoDetalladoCorteCaja && reserva.boletosDetalle && reserva.boletosDetalle.length > 0) {
+                                          const boletosStr = reserva.boletosDetalle.map(b => `${b.fila}-${b.asiento}`).join(', ');
+                                          const boletosTexto = pdf.splitTextToSize(boletosStr, 35); // Ancho más pequeño para evitar empalme
+                                          pdf.setFontSize(8);
+                                          pdf.setTextColor(60, 60, 60);
+                                          
+                                          // Mostrar todas las líneas de boletos
+                                          let boletosYPosition = yPosition;
+                                          for (let i = 0; i < boletosTexto.length; i++) {
+                                            boletosYPosition = checkAndAddPage(boletosYPosition, 6);
+                                            pdf.text(boletosTexto[i], marginLeft + 100, boletosYPosition);
+                                            if (i < boletosTexto.length - 1) {
+                                              boletosYPosition += 5; // Espacio entre líneas de boletos
+                                            }
+                                          }
+                                          
+                                          pdf.setFontSize(9);
+                                          pdf.setTextColor(0, 0, 0);
+                                          
+                                          // El precio se muestra en la última línea de boletos
+                                          pdf.text(`$${reserva.total.toFixed(2)}`, marginLeft + 130, boletosYPosition);
+                                          
+                                          // Ajustar yPosition al final de los boletos
+                                          yPosition = boletosYPosition;
+                                        } else {
+                                          pdf.text(reserva.boletos.toString(), marginLeft + 100, yPosition);
+                                          pdf.text(`$${reserva.total.toFixed(2)}`, marginLeft + 130, yPosition);
+                                        }
                                         
                                         yPosition += 8;
                                         
@@ -2047,7 +2105,11 @@ export default function AdminPage() {
                                   
                                   pdf.text('Control', marginLeft, yPosition);
                                   pdf.text('Nombre', marginLeft + 30, yPosition);
-                                  pdf.text('Boletos', marginLeft + 100, yPosition);
+                                  if (modoDetalladoCorteCaja) {
+                                    pdf.text('Boletos (Fila-Asiento)', marginLeft + 100, yPosition);
+                                  } else {
+                                    pdf.text('Boletos', marginLeft + 100, yPosition);
+                                  }
                                   pdf.text('Total', marginLeft + 130, yPosition);
                                   yPosition += 3;
                                   
@@ -2061,26 +2123,150 @@ export default function AdminPage() {
                                   pdf.setFont('helvetica', 'normal');
                                   pdf.setFontSize(9);
 
-                                  for (const reserva of corte.reservas) {
-                                    yPosition = checkAndAddPage(yPosition, 10);
+                                      for (const reserva of corte.reservas) {
+                                        yPosition = checkAndAddPage(yPosition, 10);
+                                        
+                                        pdf.text(reserva.referencia.toString(), marginLeft, yPosition);
+                                        
+                                        // Nombre (truncar si es muy largo)
+                                        const nombreMaxWidth = 60;
+                                        const nombreTexto = pdf.splitTextToSize(reserva.nombre, nombreMaxWidth);
+                                        pdf.text(nombreTexto[0], marginLeft + 30, yPosition);
+                                        
+                                        // En modo detallado, mostrar boletos específicos
+                                        if (modoDetalladoCorteCaja && reserva.boletosDetalle && reserva.boletosDetalle.length > 0) {
+                                          const boletosStr = reserva.boletosDetalle.map(b => `${b.fila}-${b.asiento}`).join(', ');
+                                          const boletosTexto = pdf.splitTextToSize(boletosStr, 35); // Ancho más pequeño para evitar empalme
+                                          pdf.setFontSize(8);
+                                          pdf.setTextColor(60, 60, 60);
+                                          
+                                          // Mostrar todas las líneas de boletos
+                                          let boletosYPosition = yPosition;
+                                          for (let i = 0; i < boletosTexto.length; i++) {
+                                            boletosYPosition = checkAndAddPage(boletosYPosition, 6);
+                                            pdf.text(boletosTexto[i], marginLeft + 100, boletosYPosition);
+                                            if (i < boletosTexto.length - 1) {
+                                              boletosYPosition += 5; // Espacio entre líneas de boletos
+                                            }
+                                          }
+                                          
+                                          pdf.setFontSize(9);
+                                          pdf.setTextColor(0, 0, 0);
+                                          
+                                          // El precio se muestra en la última línea de boletos
+                                          pdf.text(`$${reserva.total.toFixed(2)}`, marginLeft + 130, boletosYPosition);
+                                          
+                                          // Ajustar yPosition al final de los boletos
+                                          yPosition = boletosYPosition;
+                                        } else {
+                                          pdf.text(reserva.boletos.toString(), marginLeft + 100, yPosition);
+                                          pdf.text(`$${reserva.total.toFixed(2)}`, marginLeft + 130, yPosition);
+                                        }
+                                        
+                                        yPosition += 8;
+                                        
+                                        // Si el nombre tiene múltiples líneas, ajustar posición
+                                        if (nombreTexto.length > 1) {
+                                          yPosition += (nombreTexto.length - 1) * 5;
+                                        }
+                                      }
+                                }
+                                
+                                // Desglose por zonas (solo en modo detallado o si no hay familias por fecha)
+                                // En modo detallado, mostrar información por zonas en lugar de por fechas
+                                if (modoDetalladoCorteCaja && corte.zonas && corte.zonas.length > 0) {
+                                  yPosition = checkAndAddPage(yPosition, 25);
+                                  
+                                  pdf.setFontSize(11);
+                                  pdf.setFont('helvetica', 'bold');
+                                  pdf.setTextColor(37, 99, 235);
+                                  pdf.text('Desglose por Zonas:', marginLeft, yPosition);
+                                  yPosition += 8;
+                                  
+                                  pdf.setFont('helvetica', 'normal');
+                                  pdf.setFontSize(9);
+                                  
+                                  for (const zonaData of corte.zonas) {
+                                    yPosition = checkAndAddPage(yPosition, 20);
                                     
-                                    pdf.text(reserva.referencia.toString(), marginLeft, yPosition);
+                                    pdf.setFont('helvetica', 'bold');
+                                    pdf.setTextColor(37, 99, 235);
+                                    pdf.text(`• ${zonaData.zona}`, marginLeft + 5, yPosition);
                                     
-                                    // Nombre (truncar si es muy largo)
-                                    const nombreMaxWidth = 60;
-                                    const nombreTexto = pdf.splitTextToSize(reserva.nombre, nombreMaxWidth);
-                                    pdf.text(nombreTexto[0], marginLeft + 30, yPosition);
+                                    yPosition += 6;
+                                    pdf.setFont('helvetica', 'normal');
+                                    pdf.setFontSize(8);
+                                    pdf.setTextColor(80, 80, 80);
+                                    pdf.text(`  Boletos: ${zonaData.boletos}`, marginLeft + 10, yPosition);
+                                    yPosition += 5;
+                                    pdf.setFont('helvetica', 'bold');
+                                    pdf.setTextColor(34, 197, 94);
+                                    pdf.text(`  Total: $${zonaData.total.toFixed(2)}`, marginLeft + 10, yPosition);
+                                    yPosition += 5;
                                     
-                                    pdf.text(reserva.boletos.toString(), marginLeft + 100, yPosition);
-                                    pdf.text(`$${reserva.total.toFixed(2)}`, marginLeft + 130, yPosition);
-                                    
-                                    yPosition += 8;
-                                    
-                                    // Si el nombre tiene múltiples líneas, ajustar posición
-                                    if (nombreTexto.length > 1) {
-                                      yPosition += (nombreTexto.length - 1) * 5;
+                                    // En modo detallado, mostrar alumnos con sus boletos específicos por zona
+                                    if (zonaData.alumnos && zonaData.alumnos.length > 0) {
+                                      yPosition += 3;
+                                      pdf.setFont('helvetica', 'bold');
+                                      pdf.setFontSize(8);
+                                      pdf.setTextColor(0, 0, 0);
+                                      pdf.text(`  Alumnos (${zonaData.alumnos.length}):`, marginLeft + 10, yPosition);
+                                      yPosition += 5;
+                                      
+                                      pdf.setFont('helvetica', 'normal');
+                                      pdf.setFontSize(7);
+                                      pdf.setTextColor(60, 60, 60);
+                                      
+                                      for (const alumno of zonaData.alumnos) {
+                                        yPosition = checkAndAddPage(yPosition, 10);
+                                        
+                                        // Control
+                                        pdf.text(`  ${alumno.referencia}`, marginLeft + 15, yPosition);
+                                        
+                                        // Nombre (truncar si es muy largo)
+                                        const nombreMaxWidth = 40;
+                                        const nombreTexto = pdf.splitTextToSize(alumno.nombre, nombreMaxWidth);
+                                        pdf.text(nombreTexto[0], marginLeft + 30, yPosition);
+                                        
+                                        // Boletos específicos (fila-asiento)
+                                        if (alumno.boletosDetalle && alumno.boletosDetalle.length > 0) {
+                                          const boletosStr = alumno.boletosDetalle.map(b => `${b.fila}-${b.asiento}`).join(', ');
+                                          const boletosTexto = pdf.splitTextToSize(boletosStr, 30); // Ancho más pequeño para evitar empalme
+                                          
+                                          // Mostrar todas las líneas de boletos
+                                          let boletosYPosition = yPosition;
+                                          for (let i = 0; i < boletosTexto.length; i++) {
+                                            boletosYPosition = checkAndAddPage(boletosYPosition, 6);
+                                            pdf.text(boletosTexto[i], marginLeft + 85, boletosYPosition);
+                                            if (i < boletosTexto.length - 1) {
+                                              boletosYPosition += 4; // Espacio entre líneas de boletos
+                                            }
+                                          }
+                                          
+                                          // El total se muestra en la última línea de boletos
+                                          pdf.text(`$${alumno.total.toFixed(2)}`, marginLeft + 130, boletosYPosition);
+                                          
+                                          // Ajustar yPosition al final de los boletos
+                                          yPosition = boletosYPosition;
+                                        } else {
+                                          // Total
+                                          pdf.text(`$${alumno.total.toFixed(2)}`, marginLeft + 130, yPosition);
+                                        }
+                                        
+                                        yPosition += 5;
+                                        
+                                        // Si el nombre tiene múltiples líneas, ajustar posición
+                                        if (nombreTexto.length > 1) {
+                                          yPosition += (nombreTexto.length - 1) * 4;
+                                        }
+                                      }
                                     }
+                                    
+                                    yPosition += 5;
+                                    pdf.setFontSize(9);
                                   }
+                                  
+                                  yPosition += 5;
                                 }
                                 
                                 // Espacio entre funciones
