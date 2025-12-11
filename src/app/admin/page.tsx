@@ -2292,7 +2292,7 @@ export default function AdminPage() {
                                               {alumno.cantidadBoletos}
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-green-700">
-                                              ${alumno.total.toFixed(2)}
+                                              ${(alumno.total ?? 0).toFixed(2)}
                                             </td>
                                           </tr>
                                         ))}
@@ -2344,7 +2344,7 @@ export default function AdminPage() {
                                               {alumno.cantidadBoletos}
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-orange-700">
-                                              ${alumno.total.toFixed(2)}
+                                              ${(alumno.total ?? 0).toFixed(2)}
                                             </td>
                                           </tr>
                                         ))}

@@ -102,13 +102,29 @@ export async function GET(req: NextRequest) {
 
     // Obtener información de los alumnos únicos
     const referenciasUnicas = [...new Set(reservas.map(r => r.referencia))];
+    
+    console.log('🔍 [PAGOS-FECHA] Referencias únicas encontradas:', referenciasUnicas);
+    console.log('🔍 [PAGOS-FECHA] Total de referencias únicas:', referenciasUnicas.length);
+    
+    const queryParams = {
+      from: 'alumno',
+      select: 'alumno_ref, alumno_app, alumno_apm, alumno_nombre',
+      filter: `alumno_ref IN (${referenciasUnicas.join(',')})`
+    };
+    console.log('📝 [PAGOS-FECHA] Query que se ejecutará:', JSON.stringify(queryParams, null, 2));
+    
     const { data: alumnos, error: alumnosError } = await supabase
       .from('alumno')
       .select('alumno_ref, alumno_app, alumno_apm, alumno_nombre')
       .in('alumno_ref', referenciasUnicas);
 
+    console.log('📊 [PAGOS-FECHA] Resultados de la query de alumnos:');
+    console.log('  - Error:', alumnosError);
+    console.log('  - Total de alumnos encontrados:', alumnos?.length || 0);
+    console.log('  - Datos de alumnos:', JSON.stringify(alumnos, null, 2));
+
     if (alumnosError) {
-      console.error('Error al obtener alumnos:', alumnosError);
+      console.error('❌ [PAGOS-FECHA] Error al obtener alumnos:', alumnosError);
       // Continuar sin información de alumnos si hay error
     }
 
@@ -116,13 +132,25 @@ export async function GET(req: NextRequest) {
     const alumnosMap = new Map<number, { nombre: string; app: string; apm: string }>();
     if (alumnos) {
       alumnos.forEach(alumno => {
-        alumnosMap.set(alumno.alumno_ref, {
+        // Asegurar que alumno_ref sea número
+        const refNum = typeof alumno.alumno_ref === 'string' ? parseInt(alumno.alumno_ref, 10) : Number(alumno.alumno_ref);
+        console.log(`👤 [PAGOS-FECHA] Procesando alumno - ref (número): ${refNum}, tipo: ${typeof refNum}, app: ${alumno.alumno_app}, apm: ${alumno.alumno_apm}, nombre: ${alumno.alumno_nombre}`);
+        alumnosMap.set(refNum, {
           nombre: alumno.alumno_nombre || '',
           app: alumno.alumno_app || '',
           apm: alumno.alumno_apm || ''
         });
       });
     }
+    
+    console.log('🗺️ [PAGOS-FECHA] Mapa de alumnos creado:', {
+      total: alumnosMap.size,
+      referencias: Array.from(alumnosMap.keys()),
+      datos: Array.from(alumnosMap.entries()).map(([ref, info]) => ({
+        referencia: ref,
+        nombreCompleto: `${info.app} ${info.apm} ${info.nombre}`.trim()
+      }))
+    });
 
     // Agrupar reservas por alumno (referencia) y estado
     const agruparPorAlumno = (reservas: ReservaRaw[]): AlumnoAgrupado[] => {
@@ -159,12 +187,35 @@ export async function GET(req: NextRequest) {
 
       // Convertir a array y formatear
       return Array.from(agrupados.values()).map(grupo => {
-        const alumnoInfo = alumnosMap.get(grupo.referencia);
-        const nombreCompleto = [
-          alumnoInfo?.app || '',
-          alumnoInfo?.apm || '',
-          alumnoInfo?.nombre || ''
-        ].filter(Boolean).join(' ').trim() || `Referencia ${grupo.referencia}`;
+        // Asegurar que referencia sea número para buscar en el mapa
+        const refNum = typeof grupo.referencia === 'string' ? parseInt(grupo.referencia, 10) : Number(grupo.referencia);
+        const alumnoInfo = alumnosMap.get(refNum);
+        
+        console.log(`🔍 [PAGOS-FECHA] Procesando grupo - referencia: ${grupo.referencia} (tipo: ${typeof grupo.referencia}), refNum: ${refNum} (tipo: ${typeof refNum}), alumnoInfo encontrado:`, alumnoInfo ? 'SÍ' : 'NO');
+        if (alumnoInfo) {
+          console.log(`  - app: "${alumnoInfo.app}", apm: "${alumnoInfo.apm}", nombre: "${alumnoInfo.nombre}"`);
+        } else {
+          console.log(`  - ❌ No se encontró información en el mapa para referencia ${refNum}`);
+          console.log(`  - Referencias disponibles en el mapa (tipos):`, Array.from(alumnosMap.keys()).map(k => `${k} (${typeof k})`));
+          console.log(`  - Buscando con refNum: ${refNum}, tipo: ${typeof refNum}`);
+        }
+        
+        // Concatenar nombre completo: alumno_app + alumno_apm + alumno_nombre
+        let nombreCompleto = '';
+        if (alumnoInfo) {
+          const partes = [];
+          if (alumnoInfo.app) partes.push(alumnoInfo.app.trim());
+          if (alumnoInfo.apm) partes.push(alumnoInfo.apm.trim());
+          if (alumnoInfo.nombre) partes.push(alumnoInfo.nombre.trim());
+          nombreCompleto = partes.join(' ').trim();
+          console.log(`  - Partes del nombre:`, partes);
+          console.log(`  - Nombre completo construido: "${nombreCompleto}"`);
+        }
+        // Si no se encontró información del alumno o el nombre está vacío, usar referencia
+        if (!nombreCompleto) {
+          nombreCompleto = `Referencia ${grupo.referencia}`;
+          console.log(`  - ⚠️ Usando fallback: "${nombreCompleto}"`);
+        }
 
         // Ordenar asientos por fila y luego por número de asiento
         const asientosOrdenados = grupo.asientos.sort((a, b) => {
@@ -188,8 +239,8 @@ export async function GET(req: NextRequest) {
           nombreCompleto,
           asientos: asientosStr,
           zonas: zonasStr,
-          total: grupo.total,
-          cantidadBoletos: grupo.cantidadBoletos,
+          total: Number(grupo.total) || 0,
+          cantidadBoletos: grupo.cantidadBoletos || 0,
           estado: grupo.estado
         };
       });
@@ -205,7 +256,13 @@ export async function GET(req: NextRequest) {
     const pendientes = agruparPorAlumno(reservasPendientes)
       .sort((a, b) => a.referencia - b.referencia);
 
-    return NextResponse.json({
+    console.log('✅ [PAGOS-FECHA] Resultado final:');
+    console.log(`  - Pagados: ${pagados.length} alumnos`);
+    console.log(`  - Pendientes: ${pendientes.length} alumnos`);
+    console.log('  - Ejemplos de nombres en pagados:', pagados.slice(0, 3).map(a => ({ ref: a.referencia, nombre: a.nombreCompleto })));
+    console.log('  - Ejemplos de nombres en pendientes:', pendientes.slice(0, 3).map(a => ({ ref: a.referencia, nombre: a.nombreCompleto })));
+
+    const responseData = {
       success: true,
       data: {
         pagados,
@@ -214,7 +271,11 @@ export async function GET(req: NextRequest) {
         totalPendientes: pendientes.length,
         fechaPago
       }
-    });
+    };
+
+    console.log('📤 [PAGOS-FECHA] Enviando respuesta al frontend con nombres:', JSON.stringify(responseData.data.pagados.slice(0, 2).map(a => a.nombreCompleto), null, 2));
+
+    return NextResponse.json(responseData);
 
   } catch (error) {
     console.error('Error en pagos-fecha:', error);
