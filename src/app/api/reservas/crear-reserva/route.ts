@@ -51,70 +51,80 @@ async function validateReservationAccess(alumnoRef: number): Promise<{
     funcionNum = 3;
   }
 
-  // Verificar si estamos en período de reapertura
-  const reservaModel = new ReservaModel();
-  const enReapertura = await reservaModel.isReopeningPeriod(funcionNum);
+  // Fechas de cierre por función (el portal cierra a las 13:00 del día indicado)
+  const fechaCierreFuncion1 = "2025-12-02";
+  const fechaCierreFuncion2 = "2025-12-05";
+  const fechaCierreFuncion3 = "2025-12-09";
   
-  if (enReapertura) {
-    console.log(`🔄 Validación de acceso: Usuario ${alumnoRef} está en período de reapertura para función ${funcionNum} - acceso permitido`);
-    return { hasAccess: true };
-  }
-
-  // IMPORTANTE: La función 1 NO tiene restricción de fecha - siempre está abierta
-  // Las funciones 2 y 3 mantienen sus restricciones de fecha
+  // Determinar fecha de cierre según la función
+  let fechaCierreStr: string;
+  const nombresFunciones: { [key: number]: string } = {
+    1: '1ra Función',
+    2: '2da Función',
+    3: '3ra Función'
+  };
+  const nombreFuncion = nombresFunciones[funcionNum] || 'Función';
+  
   if (funcionNum === 1) {
-    console.log(`✅ Validación de acceso para reservar: Función 1 siempre está abierta (sin restricción de fecha)`);
-    return { hasAccess: true };
+    fechaCierreStr = fechaCierreFuncion1;
+  } else if (funcionNum === 2) {
+    fechaCierreStr = fechaCierreFuncion2;
+  } else {
+    fechaCierreStr = fechaCierreFuncion3;
   }
-
-  // Para funciones 2 y 3, verificar acceso anticipado o fecha/hora de apertura (8 PM)
-  // IMPORTANTE: Las funciones 2 y 3 deben estar cerradas hasta las 8 PM del 10 de diciembre
+  
+  // Verificar si ya pasó la fecha de cierre
+  const { isAfterClosingTime, parseDateString } = await import('@/lib/utils/timezone');
+  const yaCerro = isAfterClosingTime(fechaCierreStr);
+  
+  if (yaCerro) {
+    // Portal cerrado permanentemente - no hay reapertura
+    const fechaCierre = parseDateString(fechaCierreStr);
+    const fechaCierreFormateada = fechaCierre.toLocaleDateString('es-MX', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'America/Monterrey'
+    });
+    
+    console.log(`🚫 Validación de acceso para reservar: Usuario ${alumnoRef} NO tiene acceso - el portal cerró permanentemente el ${fechaCierreFormateada} a la 1:00 PM para la ${nombreFuncion}`);
+    return {
+      hasAccess: false,
+      message: `El sistema de reservas para la ${nombreFuncion} cerró permanentemente el ${fechaCierreFormateada} a la 1:00 PM (hora de Monterrey).`,
+      fechaApertura: fechaCierreStr,
+      nombreFuncion: nombreFuncion
+    };
+  }
+  
+  // Si aún no ha cerrado, verificar acceso anticipado o fecha de apertura
   const tieneAccesoAnticipado = hasEarlyAccess(alumnoRef);
   
-  // Verificar si estamos en la fecha de reapertura
-  const { getReopeningDateForFunction } = await import('@/lib/config/earlyAccess');
-  const { isAfterReopeningTime, getTodayInMonterrey, parseDateString } = await import('@/lib/utils/timezone');
-  
-  const fechaReaperturaStr = getReopeningDateForFunction(funcionNum);
-  const fechaReapertura = parseDateString(fechaReaperturaStr);
-  const today = getTodayInMonterrey();
-  
-  // Verificar si estamos en la fecha de reapertura o después
-  const estamosEnFechaReaperturaOdespues = today.getTime() >= fechaReapertura.getTime();
-  
-  let yaAbrio: boolean;
-  if (estamosEnFechaReaperturaOdespues) {
-    // Estamos en la fecha de reapertura o después, verificar si ya pasaron las 8 PM del día de reapertura
-    yaAbrio = isAfterReopeningTime(fechaReaperturaStr, 20); // 20 = 8 PM
-    console.log(`🔍 Validación de acceso para reservar - En fecha de reapertura o después: fechaReapertura=${fechaReaperturaStr}, yaAbrio (8 PM)=${yaAbrio}`);
-  } else {
-    // Estamos ANTES de la fecha de reapertura, el portal debe estar CERRADO
-    yaAbrio = false;
-    console.log(`🔍 Validación de acceso para reservar - ANTES de fecha de reapertura: fechaReapertura=${fechaReaperturaStr}, portal CERRADO`);
+  // IMPORTANTE: La función 1 NO tiene restricción de fecha - siempre está abierta hasta su fecha de cierre
+  if (funcionNum === 1) {
+    console.log(`✅ Validación de acceso para reservar: Función 1 abierta (hasta fecha de cierre)`);
+    return { hasAccess: true };
   }
-
+  
+  // Para funciones 2 y 3, verificar acceso anticipado o fecha/hora de apertura (8 PM)
+  const { getOpeningDateForFunction } = await import('@/lib/config/earlyAccess');
+  const { isAfterOpeningTime } = await import('@/lib/utils/timezone');
+  const fechaAperturaStr = getOpeningDateForFunction(funcionNum);
+  const yaAbrio = isAfterOpeningTime(fechaAperturaStr, 20); // 20 = 8 PM
+  
   if (!tieneAccesoAnticipado && !yaAbrio) {
-    const nombresFunciones: { [key: number]: string } = {
-      1: '1ra Función',
-      2: '2da Función',
-      3: '3ra Función'
-    };
-    const nombreFuncion = nombresFunciones[funcionNum] || 'Función';
-    
-    // Formatear fecha de reapertura para el mensaje
-    const [year, month, day] = fechaReaperturaStr.split('-').map(Number);
-    const fechaReaperturaFormateada = new Date(year, month - 1, day).toLocaleDateString('es-MX', {
+    const [year, month, day] = fechaAperturaStr.split('-').map(Number);
+    const fechaAperturaFormateada = new Date(year, month - 1, day).toLocaleDateString('es-MX', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
       timeZone: 'America/Monterrey'
     });
 
-    console.log(`🚫 Validación de acceso para reservar: Usuario ${alumnoRef} NO tiene acceso - fecha/hora de reapertura: ${fechaReaperturaStr} a las 8 PM`);
+    console.log(`🚫 Validación de acceso para reservar: Usuario ${alumnoRef} NO tiene acceso - fecha/hora de apertura: ${fechaAperturaStr} a las 8 PM`);
     return {
       hasAccess: false,
-      message: `El sistema de reservas estará disponible a partir del ${fechaReaperturaFormateada} a las 8:00 PM (hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha y hora.`,
-      fechaApertura: fechaReaperturaStr,
+      message: `El sistema de reservas estará disponible a partir del ${fechaAperturaFormateada} a las 8:00 PM (hora de Monterrey) para la ${nombreFuncion}. Por favor, intenta nuevamente en esa fecha y hora.`,
+      fechaApertura: fechaAperturaStr,
       nombreFuncion: nombreFuncion
     };
   }
