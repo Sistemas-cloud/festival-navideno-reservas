@@ -118,11 +118,6 @@ export async function GET(req: NextRequest) {
       .select('alumno_ref, alumno_app, alumno_apm, alumno_nombre')
       .in('alumno_ref', referenciasUnicas);
 
-    console.log('📊 [PAGOS-FECHA] Resultados de la query de alumnos:');
-    console.log('  - Error:', alumnosError);
-    console.log('  - Total de alumnos encontrados:', alumnos?.length || 0);
-    console.log('  - Datos de alumnos:', JSON.stringify(alumnos, null, 2));
-
     if (alumnosError) {
       console.error('❌ [PAGOS-FECHA] Error al obtener alumnos:', alumnosError);
       // Continuar sin información de alumnos si hay error

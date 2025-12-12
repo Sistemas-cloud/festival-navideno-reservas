@@ -255,7 +255,7 @@ export class AuthModel {
         console.log(`🚫 Acceso denegado: El sistema de reservas para la ${nombreFuncion} cerró permanentemente el ${fechaCierreFormateada} a la 1:00 PM (hora de Monterrey)`);
         return {
           success: false,
-          message: `El sistema de reservas para la ${nombreFuncion} cerró permanentemente el ${fechaCierreFormateada} a la 1:00 PM (hora de Monterrey).`,
+          message: `El período de reservas para la ${nombreFuncion} ha finalizado. Agradecemos tu participación y te esperamos el 16 de diciembre de 2025 en el Festival Navideño.`,
           isAccessDeniedByDate: true,
           fechaApertura: fechaCierreStr,
           nombreFuncion: nombreFuncion

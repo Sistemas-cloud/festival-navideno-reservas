@@ -90,7 +90,7 @@ async function validateReservationAccess(alumnoRef: number): Promise<{
     console.log(`🚫 Validación de acceso para reservar: Usuario ${alumnoRef} NO tiene acceso - el portal cerró permanentemente el ${fechaCierreFormateada} a la 1:00 PM para la ${nombreFuncion}`);
     return {
       hasAccess: false,
-      message: `El sistema de reservas para la ${nombreFuncion} cerró permanentemente el ${fechaCierreFormateada} a la 1:00 PM (hora de Monterrey).`,
+      message: `El período de reservas para la ${nombreFuncion} ha finalizado. Agradecemos tu participación y te esperamos el 16 de diciembre de 2025 en el Festival Navideño.`,
       fechaApertura: fechaCierreStr,
       nombreFuncion: nombreFuncion
     };
