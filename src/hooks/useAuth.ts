@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserData, HermanosData } from '@/types';
 import { hasEarlyAccess, getOpeningDateForFunction } from '@/lib/config/earlyAccess';
-import { getTodayInMonterrey, isAfterOpeningTime } from '@/lib/utils/timezone';
+import { getTodayInMonterrey, isAfterOpeningTime, isAfterClosingTime } from '@/lib/utils/timezone';
 
 /**
  * Valida si un usuario tiene acceso al sistema basándose en:
@@ -64,7 +64,6 @@ function validateUserAccess(userData: UserData): boolean {
   }
   
   // Verificar si ya pasó la fecha de cierre
-  const { isAfterClosingTime } = await import('@/lib/utils/timezone');
   const yaCerro = isAfterClosingTime(fechaCierreStr);
   
   if (yaCerro) {
