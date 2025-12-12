@@ -1122,40 +1122,18 @@ export class ReservaModel {
 
       console.log(`🔍 isPortalCerrado - Alumno ${alumnoRef}: función=${funcion} (${nombreFuncion}), fechaCierre=${fechaCierreStr}`);
       
-      // Verificar si estamos en período de reapertura
-      const enReapertura = await this.isReopeningPeriod(funcion);
-      
-      if (enReapertura) {
-        console.log(`🔄 isPortalCerrado - Portal ABIERTO en período de reapertura para ${nombreFuncion} (alumno ${alumnoRef})`);
-        return { cerrado: false };
-      }
-      
       // Verificar si ya pasó la hora de cierre (13:00 del día indicado)
       const yaCerro = isAfterClosingTime(fechaCierreStr);
       console.log(`🔍 isPortalCerrado - Verificación de cierre para ${nombreFuncion}: fechaCierre=${fechaCierreStr}, yaCerro=${yaCerro}`);
       
       if (yaCerro) {
-        // Verificar si ya debería haber reabierto
-        const { getReopeningDateForFunction } = await import('../config/earlyAccess');
-        const { isAfterReopeningTime } = await import('../utils/timezone');
-        const fechaReapertura = getReopeningDateForFunction(funcion);
-        
-        // La función 1 reabre a las 20:00 (8 PM), las demás a medianoche
-        const horaReapertura = funcion === 1 ? 20 : 0;
-        const yaReabrio = isAfterReopeningTime(fechaReapertura, horaReapertura);
-        
-        if (yaReabrio) {
-          // Debería estar abierto pero no está en reapertura, algo está mal
-          console.log(`⚠️ isPortalCerrado - Ya debería haber reabierto pero no está en período de reapertura`);
-        } else {
-          // Portal cerrado permanentemente - no hay reapertura
-          const fechaCierre = parseDateString(fechaCierreStr);
-          console.log(`🚫 isPortalCerrado - Portal CERRADO permanentemente para ${nombreFuncion} (alumno ${alumnoRef})`);
-          return {
-            cerrado: true,
-            mensaje: `Las reservas de boletos para la ${nombreFuncion} cerraron permanentemente el ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM. Aún puedes cambiar asientos si lo necesitas.`
-          };
-        }
+        // Portal cerrado permanentemente - no hay reapertura
+        const fechaCierre = parseDateString(fechaCierreStr);
+        console.log(`🚫 isPortalCerrado - Portal CERRADO permanentemente para ${nombreFuncion} (alumno ${alumnoRef})`);
+        return {
+          cerrado: true,
+          mensaje: `Las reservas de boletos para la ${nombreFuncion} cerraron permanentemente el ${fechaCierre.toLocaleDateString('es-MX')} a la 1:00 PM. Aún puedes cambiar asientos si lo necesitas.`
+        };
       }
 
       console.log(`✅ isPortalCerrado - Portal ABIERTO para ${nombreFuncion} (alumno ${alumnoRef})`);
